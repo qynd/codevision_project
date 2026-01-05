@@ -8,6 +8,7 @@ import 'package:intl/date_symbol_data_local.dart';
 // -------------------------------
 
 import 'core/constants/app_constants.dart';
+import 'core/constants/app_theme.dart'; // Import Theme Baru
 import 'presentation/auth/splash_screen.dart'; 
 
 void main() async {
@@ -38,10 +39,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       
       // Setup tema dasar agar konsisten
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
-        useMaterial3: true,
-      ),
+      theme: CodevisionTheme.lightTheme,
 
       // Arahkan ke SplashScreen untuk pengecekan sesi
       home: const SplashScreen(), 

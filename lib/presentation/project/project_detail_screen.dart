@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../data/models/project_model.dart';
 import '../../data/models/task_model.dart';
 import '../../data/models/user_model.dart';
+import '../../services/auth_service.dart'; // Import Auth Service
 
 class ProjectDetailScreen extends StatefulWidget {
   final ProjectModel project;
@@ -18,23 +19,35 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
   
   // List untuk menampung data Pegawai yang bisa dipilih
   List<UserModel> _availableUsers = [];
+  UserModel? _currentUser;
+  bool _isLoadingUser = true;
 
   @override
   void initState() {
     super.initState();
-    _fetchUsers(); // Ambil data pegawai saat halaman dibuka
+    _fetchCurrentUserAndUsers();
   }
 
   // --- BAGIAN 1: FUNGSI LOGIKA ---
 
-  // A. Ambil Daftar Semua Pegawai untuk Dropdown
-  Future<void> _fetchUsers() async {
+  // A. Init Data (User Login & List Pegawai)
+  Future<void> _fetchCurrentUserAndUsers() async {
+    // 1. Ambil User Login
+    final user = await AuthService().getCurrentUserData();
+    
+    // 2. Ambil Daftar Pegawai (Hanya jika perlu dropdown, tapi kita ambil saja)
     try {
       final response = await supabase.from('users').select();
       final data = response as List<dynamic>;
-      setState(() {
-        _availableUsers = data.map((json) => UserModel.fromJson(json)).toList();
-      });
+      final users = data.map((json) => UserModel.fromJson(json)).toList();
+
+      if (mounted) {
+        setState(() {
+          _currentUser = user;
+          _availableUsers = users;
+          _isLoadingUser = false;
+        });
+      }
     } catch (e) {
       debugPrint("Error fetch users: $e");
     }
@@ -42,11 +55,20 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
 
   // B. Ambil Tugas
   Future<List<TaskModel>> _fetchTasks() async {
-    final response = await supabase
+    if (_currentUser == null) return [];
+
+    var query = supabase
         .from('tasks')
         .select()
-        .eq('project_id', widget.project.id)
-        .order('created_at', ascending: true);
+        .eq('project_id', widget.project.id);
+    
+    // FILTER: Jika Pegawai, hanya ambil tugas miliknya
+    // Kecuali jika user Admin, ambil semua
+    if (_currentUser!.role != 'Admin') {
+      query = query.eq('assigned_to', _currentUser!.id);
+    }
+    
+    final response = await query.order('created_at', ascending: true);
 
     final data = response as List<dynamic>;
     return data.map((json) => TaskModel.fromJson(json)).toList();
@@ -63,11 +85,14 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     }
   }
 
-  // C. Tambah Tugas dengan Pilihan User (CREATE)
+  // C. Tambah Tugas dengan Pilihan User (CREATE) - ONLY ADMIN
   void _showAddTaskSheet() {
+    // Double check logic (opsional karena FAB juga disembunyikan)
+    if (_currentUser?.role != 'Admin') return; 
+
     final titleController = TextEditingController();
     final descController = TextEditingController();
-    String? selectedUserId; // Variabel untuk menyimpan user yang dipilih
+    String? selectedUserId; 
     bool isSubmitting = false;
 
     showModalBottomSheet(
@@ -106,12 +131,11 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                     border: OutlineInputBorder(),
                     prefixIcon: Icon(Icons.person)
                   ),
-                  // ignore: deprecated_member_use
                   value: selectedUserId,
                   items: _availableUsers.map((user) {
                     return DropdownMenuItem(
                       value: user.id,
-                      child: Text(user.nama), // Tampilkan nama, simpan ID
+                      child: Text(user.nama), 
                     );
                   }).toList(),
                   onChanged: (val) {
@@ -136,18 +160,15 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                           'deskripsi': descController.text,
                           'status': 'To Do',
                           'progress_percent': 0,
-                          'assigned_to': selectedUserId, // Simpan ID user terpilih
+                          'assigned_to': selectedUserId, 
                         });
 
                         if (mounted) {
-                          // ignore: use_build_context_synchronously
                           Navigator.pop(context);
                           setState(() {}); 
-                          // ignore: use_build_context_synchronously
                           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Tugas berhasil ditambahkan")));
                         }
                       } catch (e) {
-                         // ignore: use_build_context_synchronously
                          if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
                       }
                     },
@@ -166,10 +187,27 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
   }
 
   // D. Update Status
-  // C. Fungsi Menampilkan Dialog Edit Status & HAPUS (UPDATE & DELETE)
   void _showUpdateTaskDialog(TaskModel task) {
     String selectedStatus = task.status;
     double sliderValue = task.progress.toDouble();
+    bool isAdmin = _currentUser?.role == 'Admin';
+
+    // Tentukan Opsi Status
+    // Step 1: Default Statuses
+    List<String> statusOptions = ['To Do', 'Doing'];
+    
+    // Step 2: Add 'Waiting Approval' always available
+    statusOptions.add('Waiting Approval');
+
+    // Step 3: Add 'Done' ONLY if Admin
+    if (isAdmin) {
+      statusOptions.add('Done'); 
+    }
+
+    // Pastikan status saat ini ada di opsi (jika sudah Done, tetap tampilkan agar tidak error)
+    if (!statusOptions.contains(selectedStatus)) {
+      statusOptions.add(selectedStatus);
+    }
     
     showDialog(
       context: context,
@@ -181,7 +219,6 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Expanded(child: Text("Update: ${task.judul}", style: const TextStyle(fontSize: 18))),
-                  // Ikon Sampah Kecil di Judul (Opsional, tapi kita pakai tombol di bawah saja biar aman)
                 ],
               ),
               content: Column(
@@ -194,14 +231,15 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                   DropdownButton<String>(
                     value: selectedStatus,
                     isExpanded: true,
-                    items: ['To Do', 'Doing', 'Done'].map((String val) {
-                      return DropdownMenuItem(value: val, child: Text(val));
+                    items: statusOptions.map((String val) {
+                      return DropdownMenuItem(value: val, child: Text(val == 'Waiting Approval' ? 'Waiting Approval (Menunggu Validasi)' : val));
                     }).toList(),
                     onChanged: (newVal) {
                       setDialogState(() {
                          selectedStatus = newVal!;
                          if(selectedStatus == 'Done') sliderValue = 100;
                          if(selectedStatus == 'To Do') sliderValue = 0;
+                         // Jika pegawai set waiting approval, mungkin set progress 90% atau 100%? Biarkan manual.
                       });
                     },
                   ),
@@ -217,46 +255,46 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                       setDialogState(() => sliderValue = val);
                     },
                   ),
+                  // Note: Bisa ditambahkan validasi Employee tidak bisa geser 100% jika status bukan Done, tapi kita percayakan pada Status.
                 ],
               ),
               actions: [
-                // --- TOMBOL HAPUS (BARU) ---
-                TextButton(
-                  style: TextButton.styleFrom(foregroundColor: Colors.red),
-                  onPressed: () async {
-                    // Konfirmasi Hapus
-                    final confirm = await showDialog<bool>(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: const Text("Hapus Tugas?"),
-                        content: const Text("Tugas ini akan dihapus permanen."),
-                        actions: [
-                          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Batal")),
-                          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Hapus", style: TextStyle(color: Colors.red))),
-                        ],
-                      ),
-                    );
+                // --- TOMBOL HAPUS (HANYA ADMIN) ---
+                if (isAdmin)
+                  TextButton(
+                    style: TextButton.styleFrom(foregroundColor: Colors.red),
+                    onPressed: () async {
+                      // Konfirmasi Hapus
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text("Hapus Tugas?"),
+                          content: const Text("Tugas ini akan dihapus permanen."),
+                          actions: [
+                            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Batal")),
+                            TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Hapus", style: TextStyle(color: Colors.red))),
+                          ],
+                        ),
+                      );
 
-                    if (confirm == true) {
-                      try {
-                        // Proses Hapus ke Database
-                        await supabase.from('tasks').delete().eq('id', task.id);
-                        
-                        if (mounted) {
-                          Navigator.pop(context); // Tutup Dialog Utama
-                          setState(() {}); // Refresh List Tugas di layar
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Tugas dihapus")));
+                      if (confirm == true) {
+                        try {
+                          await supabase.from('tasks').delete().eq('id', task.id);
+                          
+                          if (mounted) {
+                            Navigator.pop(context); // Tutup Dialog Utama
+                            setState(() {}); // Refresh List
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Tugas dihapus")));
+                          }
+                        } catch (e) {
+                          print(e);
                         }
-                      } catch (e) {
-                        print(e);
                       }
-                    }
-                  },
-                  child: const Text("Hapus"),
-                ),
+                    },
+                    child: const Text("Hapus"),
+                  ),
                 // ---------------------------
 
-                // Spacer agar tombol Hapus di kiri, Batal/Simpan di kanan
                 const SizedBox(width: 20), 
 
                 TextButton(
@@ -294,14 +332,18 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     Color color;
     switch (status) {
       case 'Done': color = Colors.green; break;
-      case 'Doing': color = Colors.orange; break;
+      case 'Doing': color = Colors.blue; break;
+      case 'Waiting Approval': color = Colors.orange; break;
       default: color = Colors.grey;
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      // ignore: deprecated_member_use
       decoration: BoxDecoration(color: color.withOpacity(0.2), borderRadius: BorderRadius.circular(4)),
-      child: Text(status, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold)),
+      child: Text(
+        status == 'Waiting Approval' ? 'Menunggu Validasi' : status, 
+        style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
+        textAlign: TextAlign.center,
+      ),
     );
   }
 
@@ -310,7 +352,9 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Detail Proyek')),
-      body: Column(
+      body: _isLoadingUser 
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
         children: [
           // Info Proyek
           Container(
@@ -401,6 +445,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                             Text("${task.progress}%", style: const TextStyle(fontSize: 10)),
                           ],
                         ),
+                        // Semua bisa tap untuk update status (hak akses diatur di dalam dialog)
                         onTap: () => _showUpdateTaskDialog(task),
                       ),
                     );
@@ -411,12 +456,15 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showAddTaskSheet,
-        label: const Text("Tugas Baru"),
-        icon: const Icon(Icons.add_task),
-        backgroundColor: Colors.indigo,
-      ),
+      // FAB HANYA UNTUK ADMIN
+      floatingActionButton: _currentUser?.role == 'Admin' 
+        ? FloatingActionButton.extended(
+            onPressed: _showAddTaskSheet,
+            label: const Text("Tugas Baru"),
+            icon: const Icon(Icons.add_task),
+            backgroundColor: Colors.indigo,
+          )
+        : null, 
     );
   }
 }

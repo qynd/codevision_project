@@ -19,7 +19,10 @@ class _AdminAddProjectScreenState extends State<AdminAddProjectScreen> {
   late TextEditingController _descController;
   late TextEditingController _dateController;
   
+  String _selectedStatus = 'In Progress'; // Default Status
   bool _isLoading = false;
+
+  final List<String> _statusOptions = ['New', 'In Progress', 'Completed', 'On Hold'];
 
   @override
   void initState() {
@@ -27,6 +30,15 @@ class _AdminAddProjectScreenState extends State<AdminAddProjectScreen> {
     // Jika edit, isi field dengan data lama. Jika baru, kosongkan.
     _titleController = TextEditingController(text: widget.project?['nama_proyek'] ?? '');
     _descController = TextEditingController(text: widget.project?['deskripsi'] ?? '');
+    
+    // Status Init
+    if (widget.project != null && widget.project!['status'] != null) {
+      _selectedStatus = widget.project!['status'];
+      // Pastikan status dari DB ada di opsi, jika tidak, tambahkan atau default
+      if (!_statusOptions.contains(_selectedStatus)) {
+        _statusOptions.add(_selectedStatus);
+      }
+    }
     
     // Handle tanggal untuk edit
     String initialDate = '';
@@ -51,16 +63,17 @@ class _AdminAddProjectScreenState extends State<AdminAddProjectScreen> {
           'deskripsi': _descController.text,
           'due_date': _dateController.text,
           'start_date': now.toIso8601String(),
-          'status': 'In Progress',
+          'status': 'In Progress', // Default buat baru
           'created_at': now.toIso8601String(),
         });
       } else {
         // --- MODE EDIT (UPDATE) ---
+        // Disini kita sertakan STATUS agar bisa diupdate
         await supabase.from('projects').update({
           'nama_proyek': _titleController.text,
           'deskripsi': _descController.text,
           'due_date': _dateController.text,
-          // Status dan Start Date biasanya tidak diubah di sini
+          'status': _selectedStatus, // <-- UPDATE STATUS
         }).eq('id', widget.project!['id']); // Update berdasarkan ID
       }
 
@@ -89,6 +102,7 @@ class _AdminAddProjectScreenState extends State<AdminAddProjectScreen> {
         child: Form(
           key: _formKey,
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               TextFormField(
                 controller: _titleController,
@@ -124,6 +138,29 @@ class _AdminAddProjectScreenState extends State<AdminAddProjectScreen> {
                 },
                 validator: (val) => val!.isEmpty ? 'Wajib diisi' : null,
               ),
+              
+              // --- DROPDOWN STATUS (Hanya muncul saat Edit) ---
+              if (isEdit) ...[
+                const SizedBox(height: 16),
+                const Text("Status Proyek", style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  value: _selectedStatus,
+                  decoration: const InputDecoration(border: OutlineInputBorder()),
+                  items: _statusOptions.map((status) {
+                    return DropdownMenuItem(
+                      value: status,
+                      child: Text(status),
+                    );
+                  }).toList(),
+                  onChanged: (val) {
+                    setState(() {
+                      _selectedStatus = val!;
+                    });
+                  },
+                ),
+              ],
+
               const SizedBox(height: 30),
               SizedBox(
                 width: double.infinity,

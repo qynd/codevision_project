@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../data/models/project_model.dart';
+import '../../data/models/user_model.dart'; // Import Model User
+import '../../services/auth_service.dart'; // Import Auth Service
 import 'project_detail_screen.dart';
 
 class ProjectScreen extends StatefulWidget {
@@ -12,16 +14,69 @@ class ProjectScreen extends StatefulWidget {
 
 class _ProjectScreenState extends State<ProjectScreen> {
   final supabase = Supabase.instance.client;
+  UserModel? _currentUser; // Simpan data user yang login
+  bool _isLoadingUser = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchCurrentUser();
+  }
+
+  // Ambil Data User Saat Ini
+  Future<void> _fetchCurrentUser() async {
+    final user = await AuthService().getCurrentUserData();
+    if (mounted) {
+      setState(() {
+        _currentUser = user;
+        _isLoadingUser = false;
+      });
+    }
+  }
 
   // Future untuk mengambil list project
   Future<List<ProjectModel>> _fetchProjects() async {
-    final response = await supabase
-        .from('projects')
-        .select()
-        .order('created_at', ascending: false); // Urutkan dari yang terbaru
+    // Tunggu user loaded jika dipanggil manual (misal refresh)
+    if (_currentUser == null) {
+      // Coba fetch lagi jika null (edge case)
+      await _fetchCurrentUser();
+      if (_currentUser == null) return [];
+    }
 
-    final data = response as List<dynamic>;
-    return data.map((json) => ProjectModel.fromJson(json)).toList();
+    if (_currentUser!.role == 'Admin') {
+      // ADMIN: Lihat Semua Project
+      final response = await supabase
+          .from('projects')
+          .select()
+          .order('created_at', ascending: false);
+
+      final data = response as List<dynamic>;
+      return data.map((json) => ProjectModel.fromJson(json)).toList();
+    } else {
+      // PEGAWAI: Hanya Project yang mereka punya TUGAS di dalamnya
+      // 1. Ambil semua tugas yang assigned_to user ini
+      final tasksResponse = await supabase
+          .from('tasks')
+          .select('project_id')
+          .eq('assigned_to', _currentUser!.id);
+      
+      final tasksData = tasksResponse as List<dynamic>;
+      
+      // 2. Kumpulkan ID Project yang unik
+      final projectIds = tasksData.map((t) => t['project_id']).toSet().toList();
+
+      if (projectIds.isEmpty) return [];
+
+      // 3. Ambil Detail Project berdasarkan ID tersebut
+      final response = await supabase
+          .from('projects')
+          .select()
+          .filter('id', 'in', projectIds) // Filter Project ID
+          .order('created_at', ascending: false);
+
+      final data = response as List<dynamic>;
+      return data.map((json) => ProjectModel.fromJson(json)).toList();
+    }
   }
 
   // Helper untuk warna status
@@ -52,7 +107,9 @@ class _ProjectScreenState extends State<ProjectScreen> {
           ),
         ],
       ),
-      body: FutureBuilder<List<ProjectModel>>(
+      body: _isLoadingUser 
+          ? const Center(child: CircularProgressIndicator()) 
+          : FutureBuilder<List<ProjectModel>>(
         future: _fetchProjects(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -64,7 +121,13 @@ class _ProjectScreenState extends State<ProjectScreen> {
           }
 
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text("Belum ada proyek saat ini."));
+            return Center(
+              child: Text(
+                _currentUser?.role == 'Admin' 
+                  ? "Belum ada proyek saat ini." // Pesan untuk Admin
+                  : "Anda belum memiliki tugas di proyek manapun." // Pesan untuk Pegawai
+              ),
+            );
           }
 
           final projects = snapshot.data!;
@@ -187,18 +250,20 @@ class _ProjectScreenState extends State<ProjectScreen> {
           );
         },
       ),
-      // Tombol Tambah Proyek (Hanya visual dulu)
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Fitur Tambah Proyek akan dibuat nanti"),
-            ),
-          );
-        },
-        backgroundColor: Colors.indigo,
-        child: const Icon(Icons.add, color: Colors.white),
-      ),
+      // Tombol Tambah Proyek (Hanya Admin yang bisa lihat)
+      floatingActionButton: _currentUser?.role == 'Admin' 
+          ? FloatingActionButton(
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text("Fitur Tambah Proyek akan dibuat nanti"),
+                  ),
+                );
+              },
+              backgroundColor: Colors.indigo,
+              child: const Icon(Icons.add, color: Colors.white),
+            )
+          : null, // Sembunyikan jika bukan Admin
     );
   }
 }

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../home/main_navigation.dart'; // Halaman Pegawai
-import '../admin/admin_home_screen.dart'; // Halaman Admin
+import '../home/main_navigation.dart'; 
+import '../admin/admin_home_screen.dart'; 
 import 'login_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -11,70 +11,98 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> {
+class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _opacity;
+
   @override
   void initState() {
     super.initState();
-    _checkAuth();
+    // Setup Animasi Fade
+    _controller = AnimationController(vsync: this, duration: const Duration(seconds: 2));
+    _opacity = Tween<double>(begin: 0.0, end: 1.0).animate(_controller);
+    
+    // Mulai animasi
+    _startAnimationSequence();
+  }
+
+  Future<void> _startAnimationSequence() async {
+    // 1. Fade In
+    await _controller.forward();
+    
+    // 2. Tahan 2 detik
+    await Future.delayed(const Duration(seconds: 2));
+    
+    // 3. Fade Out (Opsional, tapi biasanya langsung pindah juga oke)
+    // await _controller.reverse(); 
+
+    // 4. Cek Sesi
+    await _checkAuth();
   }
 
   Future<void> _checkAuth() async {
-    // Beri jeda sedikit biar logo kelihatan (opsional)
-    await Future.delayed(const Duration(seconds: 2));
-
     final session = Supabase.instance.client.auth.currentSession;
 
     if (session == null) {
-      // 1. Jika belum login -> Ke Login Screen
-      if (mounted) {
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const LoginScreen()));
-      }
+      if (mounted) Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const LoginScreen()));
     } else {
-      // 2. Jika sudah login -> CEK ROLE USER
       try {
         final user = Supabase.instance.client.auth.currentUser;
-        
         final userData = await Supabase.instance.client
             .from('users')
-            .select('role') // Ambil kolom role
+            .select('role')
             .eq('id', user!.id)
             .single();
 
-        final role = userData['role'] ?? 'pegawai'; // Default pegawai
+        final role = userData['role'] ?? 'pegawai';
 
         if (mounted) {
-          if (role == 'admin') {
-            // Arahkan ke Admin Dashboard
-            Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const AdminHomeScreen()));
-          } else {
-            // Arahkan ke Pegawai Dashboard
-            Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const MainNavigation()));
-          }
+           // Animasi transisi custom
+           Navigator.of(context).pushReplacement(PageRouteBuilder(
+             pageBuilder: (_, __, ___) => role == 'admin' ? const AdminHomeScreen() : const MainNavigation(),
+             transitionsBuilder: (_, a, __, c) => FadeTransition(opacity: a, child: c),
+             transitionDuration: const Duration(milliseconds: 800)
+           ));
         }
       } catch (e) {
-        // Jika error (misal koneksi putus), logoutkan saja biar aman
         await Supabase.instance.client.auth.signOut();
-        if (mounted) {
-          Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const LoginScreen()));
-        }
+        if (mounted) Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const LoginScreen()));
       }
     }
   }
 
   @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      backgroundColor: Colors.indigo,
+    return Scaffold(
+      backgroundColor: const Color(0xFF1A3C54), // Deep Slate Blue sesuai tema
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.code, size: 80, color: Colors.white), // Ganti dengan Logo Anda
-            SizedBox(height: 20),
-            CircularProgressIndicator(color: Colors.white),
-            SizedBox(height: 20),
-            Text("Memuat Data...", style: TextStyle(color: Colors.white)),
-          ],
+        child: FadeTransition(
+          opacity: _opacity,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Logo Baru
+              Image.asset('assets/images/logo.png', height: 120), 
+              const SizedBox(height: 24),
+              const Text(
+                "Welcome to Codevision", 
+                style: TextStyle(
+                  color: Colors.white, 
+                  fontSize: 24, 
+                  fontWeight: FontWeight.w300, 
+                  letterSpacing: 1.5
+                )
+              ),
+              const SizedBox(height: 40),
+              const CircularProgressIndicator(color: Colors.white54, strokeWidth: 2),
+            ],
+          ),
         ),
       ),
     );
