@@ -1,9 +1,12 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../core/constants/app_theme.dart'; // Import Theme
+import '../../../core/constants/app_theme.dart';
 import '../attendance/admin_attendance_screen.dart'; 
 import 'tasks/admin_approval_screen.dart'; 
+// import '../report/report_selection_sheet.dart'; // Deleted by user
+import 'report/admin_report_selection_screen.dart'; // We will create this
+ 
 
 class AdminDashboardStats extends StatefulWidget {
   const AdminDashboardStats({super.key});
@@ -31,11 +34,14 @@ class _AdminDashboardStatsState extends State<AdminDashboardStats> {
 
   Future<void> _fetchStats() async {
     try {
-      final projectRes = await supabase.from('projects').select('status');
-      final projects = projectRes as List<dynamic>;
-      
-      final taskRes = await supabase.from('tasks').select('status');
-      final tasks = taskRes as List<dynamic>;
+      // Run queries in parallel to reduce loading time
+      final results = await Future.wait([
+        supabase.from('projects').select('status'),
+        supabase.from('tasks').select('status'),
+      ]);
+
+      final projects = results[0] as List<dynamic>;
+      final tasks = results[1] as List<dynamic>;
 
       if (mounted) {
         setState(() {
@@ -50,6 +56,14 @@ class _AdminDashboardStatsState extends State<AdminDashboardStats> {
     } catch (e) {
       debugPrint("Error fetching stats: $e");
     }
+  }
+
+  // --- REPORT GENERATION PREVIEW ---
+  void _navigateToReportPreview() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const AdminReportSelectionScreen()),
+    );
   }
 
   @override
@@ -212,7 +226,7 @@ class _AdminDashboardStatsState extends State<AdminDashboardStats> {
                     subtitle: const Text("Export data ke PDF/Excel"),
                     trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                     onTap: () {
-                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Fitur Laporan segera hadir")));
+                       _navigateToReportPreview();
                     },
                   ),
                 ],
