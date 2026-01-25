@@ -41,6 +41,13 @@ class PdfService {
             rowDecoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey300))),
             cellAlignment: pw.Alignment.centerLeft,
             cellAlignments: {0: pw.Alignment.centerLeft, 4: pw.Alignment.centerLeft},
+            columnWidths: {
+              0: const pw.FlexColumnWidth(2), // Nama Proyek
+              1: const pw.FlexColumnWidth(1.5), // Status
+              2: const pw.FlexColumnWidth(1.5), // Mulai
+              3: const pw.FlexColumnWidth(1.5), // Selesai
+              4: const pw.FlexColumnWidth(3), // Deskripsi
+            },
           ),
         ],
       ),
@@ -70,12 +77,20 @@ class PdfService {
               item.judul,
               item.status,
               '${item.progress}%',
-              item.assignedTo ?? '-',
+              item.assignedToName ?? item.assignedTo ?? '-', // Tampilkan Nama jika ada
               item.deskripsi,
             ]).toList(),
             headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
             headerDecoration: const pw.BoxDecoration(color: PdfColors.orange),
             rowDecoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey300))),
+            cellAlignment: pw.Alignment.centerLeft,
+            columnWidths: {
+              0: const pw.FlexColumnWidth(2), // Judul (lebar)
+              1: const pw.FlexColumnWidth(1), // Status
+              2: const pw.FlexColumnWidth(1.5), // Progress
+              3: const pw.FlexColumnWidth(2), // Assigned To (Nama)
+              4: const pw.FlexColumnWidth(3), // Deskripsi (paling lebar)
+            },
           ),
         ],
       ),

@@ -6,6 +6,7 @@ class TaskModel {
   final String status;
   final int progress;
   final String? assignedTo;
+  final String? assignedToName; // Field baru untuk nama pegawai
 
   TaskModel({
     required this.id,
@@ -15,9 +16,17 @@ class TaskModel {
     required this.status,
     required this.progress,
     this.assignedTo,
+    this.assignedToName,
   });
 
   factory TaskModel.fromJson(Map<String, dynamic> json) {
+    // Logic: Jika ada relation 'users' (join), ambil nama dari situ.
+    String? name;
+    if (json['users'] != null) {
+      // Jika 'users' berupa Map (single join)
+      name = json['users']['nama']; 
+    }
+
     return TaskModel(
       // PERBAIKAN UTAMA: Tambahkan .toString()
       // Ini memaksa UUID (yang dianggap String) tetap dibaca sebagai String,
@@ -37,6 +46,7 @@ class TaskModel {
 
       // Handle assigned_to yang bisa null
       assignedTo: json['assigned_to']?.toString(),
+      assignedToName: name, // Set nama (bisa null jika tidak di-join)
     );
   }
 }

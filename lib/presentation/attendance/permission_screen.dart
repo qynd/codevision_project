@@ -64,6 +64,24 @@ class _PermissionScreenState extends State<PermissionScreen> {
       final user = supabase.auth.currentUser;
       if (user == null) throw "User tidak terdeteksi";
 
+      // 0. CEK APAKAH SUDAH ABSEN 'HADIR' HARI INI
+      // Jika sudah absen masuk, tidak boleh izin/sakit di hari yang sama
+      final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+      final existingAttendance = await supabase.from('attendances')
+          .select()
+          .eq('user_id', user.id)
+          .eq('tanggal', today)
+          .maybeSingle();
+
+      if (existingAttendance != null) {
+         if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("GAGAL: Anda sudah melakukan Absen Masuk hari ini. Tidak dapat mengajukan Izin/Sakit."), backgroundColor: Colors.red),
+            );
+         }
+         return; // STOP PROSES
+      }
+
       // 1. Hitung Tanggal Selesai
       int duration = 1;
       if (_selectedType == 'Cuti') {

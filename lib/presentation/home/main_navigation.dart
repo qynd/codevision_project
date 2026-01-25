@@ -19,8 +19,7 @@ class _MainNavigationState extends State<MainNavigation> {
 
   void _onItemTapped(int index) {
     setState(() {
-      // Jika user mengklik tab Home (index 0), kita ubah key-nya
-      // Perubahan key akan memaksa Flutter memuat ulang halaman tersebut
+      // Logic Refresh: Increment key setiap kali tab Home dipilih (baik dari tab lain maupun tab yang sama)
       if (index == 0) {
         _homeRefreshKey++;
       }

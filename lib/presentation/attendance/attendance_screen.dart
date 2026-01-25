@@ -37,26 +37,52 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
 
     try {
-      final data = await supabase
+      // 1. Cek Data Absensi (Hadir/Telat)
+      final attendanceData = await supabase
           .from('attendances')
           .select()
           .eq('user_id', user.id)
           .eq('tanggal', today)
+          .limit(1)
           .maybeSingle();
 
-      if (data != null) {
-        if (mounted) {
-          setState(() {
-            _attendanceId = data['id'];
-            _checkInTime = DateTime.parse(data['check_in_time']);
-            _currentStatus = data['status'] ?? 'Hadir';
-            _durasiCuti = data['durasi'] ?? 1;
+      // 2. Cek Data Izin/Sakit/Cuti (Letters)
+      final letterData = await supabase
+          .from('letters')
+          .select()
+          .eq('user_id', user.id)
+          .lte('tanggal_mulai', today)
+          .gte('tanggal_selesai', today)
+          .neq('status', 'Rejected') // UBAH QUERY: Ambil juga yang Pending
+          .limit(1)
+          .maybeSingle();
 
-            if (data['check_out_time'] != null) {
-              _checkOutTime = DateTime.parse(data['check_out_time']);
+      if (mounted) {
+        setState(() {
+          if (attendanceData != null) {
+            _attendanceId = attendanceData['id'];
+            _checkInTime = DateTime.parse(attendanceData['check_in_time']);
+            _currentStatus = attendanceData['status'] ?? 'Hadir';
+            _durasiCuti = attendanceData['durasi'] ?? 1;
+            if (attendanceData['check_out_time'] != null) {
+              _checkOutTime = DateTime.parse(attendanceData['check_out_time']);
             }
-          });
-        }
+          } else if (letterData != null) {
+            // Jika tidak ada absen tapi ada Izin/Sakit
+            String jenis = letterData['jenis_surat'] ?? 'Izin';
+            String status = letterData['status'] ?? 'Pending';
+            _currentStatus = status == 'Pending' ? "$jenis (Menunggu)" : jenis;
+            _attendanceId = null; // Tidak ada ID absen
+            _checkInTime = null; 
+            _checkOutTime = null;
+          } else {
+             // Reset jika tidak ada data sama sekali
+            _attendanceId = null;
+            _checkInTime = null; 
+            _checkOutTime = null;
+            _currentStatus = '';
+          }
+        });
       }
     } catch (e) {
       debugPrint("Error getting attendance: $e");
@@ -112,6 +138,39 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       final now = DateTime.now();
       final today = DateFormat('yyyy-MM-dd').format(now);
 
+      // --- CEK APAKAH SEDANG IZIN/SAKIT/CUTI (Pre-Check) ---
+      final letterRes = await supabase.from('letters')
+          .select()
+          .eq('user_id', user.id)
+          .lte('tanggal_mulai', today)
+          .gte('tanggal_selesai', today)
+          .neq('status', 'Rejected')
+          .limit(1)
+          .maybeSingle();
+
+      if (letterRes != null) {
+          if (mounted) {
+            final jenis = letterRes['jenis_surat'] ?? 'Izin';
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: Text("GAGAL: Anda sedang status $jenis. Tidak dapat Absen Masuk."), 
+              backgroundColor: Colors.red
+            ));
+            _getTodayAttendance(); 
+          }
+          setState(() => _isLoading = false);
+          return;
+      }
+      // -----------------------------------------------------
+
+      // --- CEK DUPLIKASI ---
+      final existingCheck = await supabase.from('attendances').select().eq('user_id', user.id).eq('tanggal', today).limit(1).maybeSingle();
+      if (existingCheck != null) {
+         if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Data diperbarui (Anda sudah absen).")));
+         _getTodayAttendance(); // Refresh UI
+         return;
+      }
+      // --------------------
+
       final response = await supabase
           .from('attendances')
           .insert({
@@ -157,9 +216,29 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Future<void> _handleCheckOut() async {
-    if (_attendanceId == null) return;
+    if (_attendanceId == null) {
+       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Error: ID Absensi tidak ditemukan. Silakan refresh halaman.")));
+       await _getTodayAttendance(); // Coba ambil lagi siapa tahu ada
+       return;
+    }
     setState(() => _isLoading = true);
     try {
+      // --- CEK APAKAH SUDAH CHECK OUT ---
+      final existingData = await supabase.from('attendances')
+          .select('check_out_time')
+          .eq('id', _attendanceId!)
+          .limit(1)
+          .maybeSingle();
+
+      if (existingData != null && existingData['check_out_time'] != null) {
+         if (mounted) {
+           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Data diperbarui (Anda sudah pulang).")));
+           setState(() => _checkOutTime = DateTime.parse(existingData['check_out_time']));
+         } 
+         return;
+      }
+      // ----------------------------------
+
       final now = DateTime.now();
       await supabase
           .from('attendances')
@@ -304,7 +383,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   ),
                   const SizedBox(height: 40),
 
-                  if (_currentStatus == 'Hadir' || _checkInTime == null)
+                  if ((_currentStatus == 'Hadir' || _currentStatus == '') || (_checkInTime == null && _currentStatus == ''))
                     Row(
                       children: [
                         _buildTimeCard(
@@ -356,7 +435,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
                   const SizedBox(height: 50),
 
-                  if (_checkInTime == null) ...[
+                  if (_checkInTime == null && _currentStatus == '') ...[
                     SizedBox(
                       width: double.infinity,
                       height: 50,

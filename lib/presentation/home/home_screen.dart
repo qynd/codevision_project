@@ -60,13 +60,24 @@ class _HomeScreenState extends State<HomeScreen> {
       }
 
       final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
-      final attendanceRes = await supabase.from('attendances').select().eq('user_id', user.id).eq('tanggal', today).maybeSingle();
-      final letterRes = await supabase.from('letters').select().eq('user_id', user.id).lte('tanggal_mulai', today).gte('tanggal_selesai', today).eq('status', 'Approved').maybeSingle();
+      final attendanceRes = await supabase.from('attendances').select().eq('user_id', user.id).eq('tanggal', today).limit(1).maybeSingle();
+      // UBAH QUERY: Jangan hanya 'Approved', tapi ambil yang TIDAK 'Rejected' (jadi Pending + Approved kena)
+      final letterRes = await supabase.from('letters')
+          .select()
+          .eq('user_id', user.id)
+          .lte('tanggal_mulai', today)
+          .gte('tanggal_selesai', today)
+          .neq('status', 'Rejected') // Logika Baru: Pending pun dianggap "Sedang Izin"
+          .limit(1)
+          .maybeSingle();
 
       if (mounted) {
         setState(() {
           if (letterRes != null) {
-            _attendanceStatus = letterRes['jenis_surat'] ?? 'Izin';
+            String jenis = letterRes['jenis_surat'] ?? 'Izin';
+            String statusSurat = letterRes['status'] ?? 'Pending';
+            // Tampilkan status spesifik jika masih Pending
+            _attendanceStatus = statusSurat == 'Pending' ? "$jenis (Menunggu)" : jenis;
             _checkInTime = '-'; _checkOutTime = '-';
           } 
           else if (attendanceRes != null) {
@@ -127,17 +138,72 @@ class _HomeScreenState extends State<HomeScreen> {
       final today = DateFormat('yyyy-MM-dd').format(now);
 
       if (_attendanceStatus == 'Belum Absen') {
+        // --- CEK APAKAH SEDANG IZIN/SAKIT/CUTI ---
+        // Jika ada surat (Pending/Approved), blokir check-in
+        final letterRes = await supabase.from('letters')
+            .select()
+            .eq('user_id', user!.id)
+            .lte('tanggal_mulai', today)
+            .gte('tanggal_selesai', today)
+            .neq('status', 'Rejected')
+            .limit(1)
+            .maybeSingle();
+
+        if (letterRes != null) {
+           final jenis = letterRes['jenis_surat'];
+           final status = letterRes['status'];
+           final msg = status == 'Pending' ? "Anda sedang mengajukan $jenis (Menunggu Persetujuan)." : "Anda sedang status $jenis.";
+           
+           if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("GAGAL: $msg Tidak bisa Absen Masuk."), backgroundColor: Colors.red));
+           await _loadDashboardData(); // Refresh UI agar status "Belum Absen" berubah jadi status izin
+           return;
+        }
+        // -----------------------------------------
+
+        // --- CEK DUPLIKASI DULU ---
+        // Mencegah error 'duplicate key' jika user menekan tombol ganda atau data belum refresh
+        final existingCheck = await supabase.from('attendances')
+            .select()
+            .eq('user_id', user!.id)
+            .eq('tanggal', today)
+            .limit(1) // Tambahan safety
+            .maybeSingle();
+
+        if (existingCheck != null) {
+           // Jika ternyata data sudah ada, jangan insert lagi. Refresh saja.
+           await _loadDashboardData();
+           if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Data diperbarui (Anda sudah absen).")));
+           return;
+        }
+        // --------------------------
+
         final position = await _getCurrentLocation();
         if (position == null) throw "Gagal mendapatkan lokasi.";
 
         await supabase.from('attendances').insert({
-          'user_id': user!.id, 'tanggal': today, 'check_in_time': now.toIso8601String(),
+          'user_id': user.id, 'tanggal': today, 'check_in_time': now.toIso8601String(),
           'check_in_lat': position.latitude, 'check_in_long': position.longitude, 'status': 'Hadir',
         });
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Berhasil Absen Masuk!")));
       
+
       } else if (_attendanceStatus == 'Sudah Masuk') {
-        await supabase.from('attendances').update({'check_out_time': now.toIso8601String()}).eq('user_id', user!.id).eq('tanggal', today);
+        // --- CEK APAKAH SUDAH CHECK OUT DI TEMPAT LAIN ---
+        final checkData = await supabase.from('attendances')
+            .select('check_out_time')
+            .eq('user_id', user!.id)
+            .eq('tanggal', today)
+            .limit(1)
+            .maybeSingle();
+
+        if (checkData != null && checkData['check_out_time'] != null) {
+           await _loadDashboardData();
+           if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Data diperbarui (Anda sudah pulang).")));
+           return;
+        }
+        // ------------------------------------------------
+
+        await supabase.from('attendances').update({'check_out_time': now.toIso8601String()}).eq('user_id', user.id).eq('tanggal', today);
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Berhasil Absen Pulang!")));
       }
       await _loadDashboardData(); 

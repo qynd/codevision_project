@@ -53,17 +53,20 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
           query = supabase.from('projects').select();
           break;
         case ReportType.task:
-          query = supabase.from('tasks').select();
+          // Join untuk ambil nama assigned_to. Gunakan alias 'users' dan spesifik FK agar tidak error PGRST201
+          query = supabase.from('tasks').select('*, users:users!tasks_assigned_to_fkey(nama)');
           break;
         case ReportType.attendance:
           // Join for user details
           query = supabase.from('attendances').select('*, users(nama, nip, jabatan)');
           break;
         case ReportType.incomingLetter:
-          query = supabase.from('letters').select().eq('jenis_surat', 'Masuk');
+          // FIX: Gunakan tabel incoming_letters, bukan letters (izin)
+          query = supabase.from('incoming_letters').select();
           break;
         case ReportType.outgoingLetter:
-          query = supabase.from('letters').select().eq('jenis_surat', 'Keluar');
+          // FIX: Gunakan tabel outgoing_letters
+          query = supabase.from('outgoing_letters').select();
           break;
       }
 
@@ -72,8 +75,10 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
         // Assuming 'created_at' or 'tanggal' exists. 
         // Adjust column name based on table schema!
         String dateColumn = 'created_at';
-        if (widget.reportType == ReportType.attendance || widget.reportType == ReportType.incomingLetter || widget.reportType == ReportType.outgoingLetter) {
-          dateColumn = 'tanggal'; // Check DB schema if needed
+        if (widget.reportType == ReportType.attendance) {
+          dateColumn = 'tanggal';
+        } else if (widget.reportType == ReportType.incomingLetter || widget.reportType == ReportType.outgoingLetter) {
+          dateColumn = 'tanggal_surat';
         }
         
         // Format to ISO string for Supabase
