@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:intl/intl.dart';
 
 import '../../data/models/project_model.dart';
@@ -20,11 +21,14 @@ class PdfService {
   /// Laporan Project: Detail project, status, timeline
   Future<String> generateProjectReport(List<ProjectModel> data) async {
     final pdf = pw.Document();
+    final logoImage = await _loadLogo();
 
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         build: (context) => [
+          _buildLetterhead(logoImage),
+          pw.SizedBox(height: 20),
           _buildHeader("Laporan Proyek"),
           pw.SizedBox(height: 20),
           pw.TableHelper.fromTextArray(
@@ -49,6 +53,7 @@ class PdfService {
               4: const pw.FlexColumnWidth(3), // Deskripsi
             },
           ),
+          _buildSignature(),
         ],
       ),
     );
@@ -64,11 +69,14 @@ class PdfService {
   /// Laporan Task: List task & penanggung jawab
   Future<String> generateTaskReport(List<TaskModel> data) async {
     final pdf = pw.Document();
+    final logoImage = await _loadLogo();
 
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         build: (context) => [
+          _buildLetterhead(logoImage),
+          pw.SizedBox(height: 20),
           _buildHeader("Laporan Tugas (Task)"),
           pw.SizedBox(height: 20),
           pw.TableHelper.fromTextArray(
@@ -92,6 +100,7 @@ class PdfService {
               4: const pw.FlexColumnWidth(3), // Deskripsi (paling lebar)
             },
           ),
+          _buildSignature(),
         ],
       ),
     );
@@ -104,11 +113,14 @@ class PdfService {
   /// Laporan Absensi: Log kehadiran (Masuk, Pulang, Status)
   Future<String> generateAttendanceReport(List<AttendanceModel> data) async {
     final pdf = pw.Document();
+    final logoImage = await _loadLogo();
 
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         build: (context) => [
+          _buildLetterhead(logoImage),
+          pw.SizedBox(height: 20),
           _buildHeader("Laporan Absensi Karyawan"),
           pw.SizedBox(height: 20),
           pw.TableHelper.fromTextArray(
@@ -125,6 +137,7 @@ class PdfService {
             headerDecoration: const pw.BoxDecoration(color: PdfColors.indigo),
             rowDecoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey300))),
           ),
+          _buildSignature(),
         ],
       ),
     );
@@ -137,11 +150,14 @@ class PdfService {
   /// Laporan Surat Masuk
   Future<String> generateIncomingLetterReport(List<LetterModel> data) async {
     final pdf = pw.Document();
+    final logoImage = await _loadLogo();
 
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         build: (context) => [
+          _buildLetterhead(logoImage),
+          pw.SizedBox(height: 20),
           _buildHeader("Laporan Surat Masuk"),
           pw.SizedBox(height: 20),
           pw.TableHelper.fromTextArray(
@@ -156,6 +172,7 @@ class PdfService {
             headerDecoration: const pw.BoxDecoration(color: PdfColors.green),
             rowDecoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey300))),
           ),
+          _buildSignature(),
         ],
       ),
     );
@@ -168,11 +185,14 @@ class PdfService {
   /// Laporan Surat Keluar
   Future<String> generateOutgoingLetterReport(List<LetterModel> data) async {
     final pdf = pw.Document();
+    final logoImage = await _loadLogo();
 
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         build: (context) => [
+          _buildLetterhead(logoImage),
+          pw.SizedBox(height: 20),
           _buildHeader("Laporan Surat Keluar"),
           pw.SizedBox(height: 20),
           pw.TableHelper.fromTextArray(
@@ -187,6 +207,7 @@ class PdfService {
             headerDecoration: const pw.BoxDecoration(color: PdfColors.purple),
             rowDecoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey300))),
           ),
+          _buildSignature(),
         ],
       ),
     );
@@ -205,21 +226,120 @@ class PdfService {
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
-        pw.Text(
-          "CODEVISION APP",
-          style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: PdfColors.grey),
-        ),
-        pw.SizedBox(height: 4),
+        // Copied previous simple header style (optional if letterhead is enough, 
+        // but kept as title of the specific report)
         pw.Text(
           title,
-          style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold),
+          style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
         ),
         pw.SizedBox(height: 8),
         pw.Text(
           "Generated at: ${DateFormat('dd MMMM yyyy, HH:mm').format(DateTime.now())}",
           style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700),
         ),
-        pw.Divider(thickness: 1),
+        pw.Divider(thickness: 0.5),
+      ],
+    );
+  }
+
+  // ===========================================================================
+  // 3. LETTERHEAD & SIGNATURE
+  // ===========================================================================
+
+  Future<pw.MemoryImage?> _loadLogo() async {
+    try {
+      final imageBytes = await rootBundle.load('assets/images/logo.png');
+      return pw.MemoryImage(imageBytes.buffer.asUint8List());
+    } catch (e) {
+      // Return null if logo fails to load to prevent crash
+      return null;
+    }
+  }
+
+  pw.Widget _buildLetterhead(pw.MemoryImage? logoImage) {
+    return pw.Column(
+      children: [
+        pw.Row(
+          crossAxisAlignment: pw.CrossAxisAlignment.center,
+          mainAxisAlignment: pw.MainAxisAlignment.start, // Changed to start
+          children: [
+            // Logo - Moved to Left
+            if (logoImage != null)
+              pw.Container(
+                width: 80,
+                height: 80,
+                margin: const pw.EdgeInsets.only(right: 60), // Add spacing
+                child: pw.Image(logoImage),
+              ),
+
+            // Company Details
+            pw.Flexible(
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.center, // Centered Text
+                children: [
+                  pw.Text(
+                    "CV. MAHKOTA BARITO",
+                    style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
+                  ),
+                  pw.SizedBox(height: 4),
+                  pw.Text(
+                    "Jl. Temanggung Silam RT 002/RW 004 NO 29",
+                    style: const pw.TextStyle(fontSize: 10),
+                    textAlign: pw.TextAlign.center,
+                  ),
+                  pw.Text(
+                    "Puruk Cahu, Kec. Murung, Kabupaten Murung Raya",
+                    style: const pw.TextStyle(fontSize: 10),
+                    textAlign: pw.TextAlign.center,
+                  ),
+                  pw.Text(
+                    "Kalimantan Tengah 73911",
+                    style: const pw.TextStyle(fontSize: 10),
+                    textAlign: pw.TextAlign.center,
+                  ),
+                  pw.SizedBox(height: 4),
+                  pw.Text(
+                    "CODEVISION",
+                    style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.grey700),
+                    textAlign: pw.TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        pw.SizedBox(height: 10),
+        pw.Divider(thickness: 2, color: PdfColors.black),
+        pw.SizedBox(height: 20),
+      ],
+    );
+  }
+
+  pw.Widget _buildSignature() {
+    return pw.Column(
+      children: [
+        pw.SizedBox(height: 50), // Spacer from table
+        pw.Row(
+          mainAxisAlignment: pw.MainAxisAlignment.end, // Align right
+          children: [
+            pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.center,
+              children: [
+                pw.Text(
+                  "Puruk Cahu, ${DateFormat('d MMMM yyyy', 'id_ID').format(DateTime.now())}",
+                  style: const pw.TextStyle(fontSize: 12),
+                ),
+                pw.SizedBox(height: 4),
+                pw.Text("Hormat Kami,", style: const pw.TextStyle(fontSize: 12)),
+                pw.SizedBox(height: 60), // Space for signature
+                pw.Text(
+                  "(__________________________)",
+                  style: const pw.TextStyle(fontSize: 12),
+                ),
+              ],
+            ),
+          ],
+        ),
       ],
     );
   }
