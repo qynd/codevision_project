@@ -234,7 +234,7 @@ class PdfService {
         ),
         pw.SizedBox(height: 8),
         pw.Text(
-          "Generated at: ${DateFormat('dd MMMM yyyy, HH:mm').format(DateTime.now())}",
+          "Dicetak pada: ${DateFormat('dd MMMM yyyy, HH:mm', 'id_ID').format(DateTime.now().toUtc().add(const Duration(hours: 8)))} Wita",
           style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700),
         ),
         pw.Divider(thickness: 0.5),

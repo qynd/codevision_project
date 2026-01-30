@@ -21,8 +21,8 @@ void main() async {
 
   // --- INISIALISASI SUPABASE ---
   await Supabase.initialize(
-    url: SUPABASE_URL,
-    anonKey: SUPABASE_ANON_KEY,
+    url: supabaseUrl,
+    anonKey: supabaseAnonKey,
   );
   // -----------------------------
   
@@ -35,7 +35,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp( // Hapus 'const' di sini jika themes berubah dinamis, tapi 'const' oke jika statis
-      title: APP_NAME,
+      title: appName,
       debugShowCheckedModeBanner: false,
       
       // Setup tema dasar agar konsisten
