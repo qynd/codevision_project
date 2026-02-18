@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart'; // Import Supabase
 import '../../data/models/letter_model.dart';
-import 'add_letter_screen.dart'; 
+import 'add_letter_screen.dart';
 
 class LetterDetailScreen extends StatefulWidget {
   final LetterModel letter;
@@ -21,7 +21,9 @@ class _LetterDetailScreenState extends State<LetterDetailScreen> {
     setState(() => _isDeleting = true);
 
     try {
-      final tableName = widget.letter.jenis == 'Masuk' ? 'incoming_letters' : 'outgoing_letters';
+      final tableName = widget.letter.jenis == 'Masuk'
+          ? 'incoming_letters'
+          : 'outgoing_letters';
 
       // 1. Hapus Data dari Database
       await supabase.from(tableName).delete().eq('id', widget.letter.id);
@@ -29,15 +31,19 @@ class _LetterDetailScreenState extends State<LetterDetailScreen> {
       // (Opsional) Hapus File Gambar dari Storage
       // Jika ingin hemat storage, kita bisa hapus gambarnya juga.
       // Tapi karena nama file harus diparsing dari URL, untuk pemula kita skip dulu agar aman.
-      
+
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Surat berhasil dihapus")));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("Surat berhasil dihapus")));
         // Kembali ke layar sebelumnya dengan sinyal 'true' agar list direfresh
-        Navigator.pop(context, true); 
+        Navigator.pop(context, true);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Gagal menghapus: $e")));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Gagal menghapus: $e")));
       }
     } finally {
       if (mounted) setState(() => _isDeleting = false);
@@ -50,14 +56,19 @@ class _LetterDetailScreenState extends State<LetterDetailScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text("Hapus Surat?"),
-        content: const Text("Data yang dihapus tidak dapat dikembalikan. Apakah Anda yakin?"),
+        content: const Text(
+          "Data yang dihapus tidak dapat dikembalikan. Apakah Anda yakin?",
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context), // Tutup dialog
             child: const Text("Batal"),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
             onPressed: () {
               Navigator.pop(context); // Tutup dialog dulu
               _deleteLetter(); // Jalankan fungsi hapus
@@ -75,14 +86,14 @@ class _LetterDetailScreenState extends State<LetterDetailScreen> {
       context,
       MaterialPageRoute(
         builder: (context) => AddLetterScreen(
-          jenisSurat: widget.letter.jenis, 
-          letterToEdit: widget.letter,     
+          jenisSurat: widget.letter.jenis,
+          letterToEdit: widget.letter,
         ),
       ),
     );
 
     if (result == true) {
-      if (mounted) Navigator.pop(context, true); 
+      if (mounted) Navigator.pop(context, true);
     }
   }
 
@@ -103,10 +114,10 @@ class _LetterDetailScreenState extends State<LetterDetailScreen> {
             icon: const Icon(Icons.edit),
             tooltip: 'Edit Surat',
             onPressed: _isDeleting ? null : _navigateToEdit,
-          )
+          ),
         ],
       ),
-      body: _isDeleting 
+      body: _isDeleting
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
               child: Column(
@@ -123,45 +134,63 @@ class _LetterDetailScreenState extends State<LetterDetailScreen> {
                             fit: BoxFit.contain,
                             loadingBuilder: (ctx, child, progress) {
                               if (progress == null) return child;
-                              return const Center(child: CircularProgressIndicator());
+                              return const Center(
+                                child: CircularProgressIndicator(),
+                              );
                             },
-                            errorBuilder: (ctx, _, __) => const Center(child: Icon(Icons.broken_image, size: 50)),
+                            errorBuilder: (ctx, _, __) => const Center(
+                              child: Icon(Icons.broken_image, size: 50),
+                            ),
                           )
-                        : const Center(child: Text("Tidak ada lampiran gambar")),
+                        : const Center(
+                            child: Text("Tidak ada lampiran gambar"),
+                          ),
                   ),
-                  
+
                   // Informasi Detail
                   Padding(
                     padding: const EdgeInsets.all(20.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildDetailItem("Nomor Surat", widget.letter.nomorSurat),
-                        _buildDetailItem("Tanggal Surat", widget.letter.tanggalSurat),
-                        const Divider(),
-                        _buildDetailItem("Perihal", widget.letter.perihal, isBold: true),
+                        _buildDetailItem(
+                          "Nomor Surat",
+                          widget.letter.nomorSurat,
+                        ),
+                        _buildDetailItem(
+                          "Tanggal Surat",
+                          widget.letter.tanggalSurat,
+                        ),
                         const Divider(),
                         _buildDetailItem(
-                          widget.letter.jenis == 'Masuk' ? "Pengirim (Asal)" : "Penerima (Tujuan)", 
-                          widget.letter.pihakTerkait
+                          "Perihal",
+                          widget.letter.perihal,
+                          isBold: true,
                         ),
-                        
+                        const Divider(),
+                        _buildDetailItem(
+                          widget.letter.jenis == 'Masuk'
+                              ? "Pengirim (Asal)"
+                              : "Penerima (Tujuan)",
+                          widget.letter.pihakTerkait,
+                        ),
+
                         const SizedBox(height: 30),
-                        
+
                         // Tombol Hapus Tambahan di Bawah (Opsional, biar lebih jelas)
                         SizedBox(
                           width: double.infinity,
                           height: 50,
                           child: OutlinedButton.icon(
                             style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.red, 
-                              side: const BorderSide(color: Colors.red)
+                              foregroundColor: Colors.red,
+                              side: const BorderSide(color: Colors.red),
                             ),
                             onPressed: _showDeleteConfirmation,
                             icon: const Icon(Icons.delete_forever),
                             label: const Text("HAPUS SURAT INI"),
                           ),
-                        )
+                        ),
                       ],
                     ),
                   ),
@@ -177,15 +206,18 @@ class _LetterDetailScreenState extends State<LetterDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+          Text(
+            label,
+            style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+          ),
           const SizedBox(height: 4),
           Text(
-            value, 
+            value,
             style: TextStyle(
-              fontSize: 16, 
+              fontSize: 16,
               fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
-              color: Colors.black87
-            )
+              color: Colors.black87,
+            ),
           ),
         ],
       ),

@@ -1,0 +1,41 @@
+Analyzing codevision_project...                                 
+
+   info - Statements in an if should be enclosed in a block - lib\presentation\admin\letters\admin_incoming_letter_screen.dart:449:13 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block - lib\presentation\admin\letters\admin_incoming_letter_screen.dart:451:13 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block - lib\presentation\admin\letters\admin_letter_list_screen.dart:139:9 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block - lib\presentation\admin\letters\admin_letter_list_screen.dart:285:17 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block - lib\presentation\admin\letters\admin_letter_list_screen.dart:287:17 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block - lib\presentation\admin\letters\admin_outgoing_letter_screen.dart:409:13 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block - lib\presentation\admin\letters\admin_outgoing_letter_screen.dart:411:13 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block - lib\presentation\admin\project\admin_project_detail_screen.dart:65:9 - curly_braces_in_flow_control_structures
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\presentation\admin\project\admin_project_detail_screen.dart:65:30 - use_build_context_synchronously
+   info - Statements in an if should be enclosed in a block - lib\presentation\admin\project\admin_project_detail_screen.dart:70:9 - curly_braces_in_flow_control_structures
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\presentation\admin\project\admin_project_detail_screen.dart:71:11 - use_build_context_synchronously
+   info - Statements in an if should be enclosed in a block - lib\presentation\admin\project\admin_project_detail_screen.dart:89:9 - curly_braces_in_flow_control_structures
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\presentation\admin\project\admin_project_detail_screen.dart:89:30 - use_build_context_synchronously
+   info - Statements in an if should be enclosed in a block - lib\presentation\admin\project\admin_project_detail_screen.dart:96:9 - curly_braces_in_flow_control_structures
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\presentation\admin\project\admin_project_detail_screen.dart:97:11 - use_build_context_synchronously
+   info - Statements in an if should be enclosed in a block - lib\presentation\admin\project\admin_project_detail_screen.dart:130:11 - curly_braces_in_flow_control_structures
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\presentation\admin\project\admin_project_detail_screen.dart:131:13 - use_build_context_synchronously
+   info - Statements in an if should be enclosed in a block - lib\presentation\admin\project\admin_project_detail_screen.dart:135:11 - curly_braces_in_flow_control_structures
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\presentation\admin\project\admin_project_detail_screen.dart:136:13 - use_build_context_synchronously
+   info - Statements in an if should be enclosed in a block - lib\presentation\admin\project\admin_project_list_screen.dart:23:9 - curly_braces_in_flow_control_structures
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\presentation\admin\project\admin_project_list_screen.dart:23:30 - use_build_context_synchronously
+   info - Statements in an if should be enclosed in a block - lib\presentation\admin\project\admin_project_list_screen.dart:28:9 - curly_braces_in_flow_control_structures
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\presentation\admin\project\admin_project_list_screen.dart:29:11 - use_build_context_synchronously
+   info - Statements in an if should be enclosed in a block - lib\presentation\admin\tasks\admin_approval_screen.dart:75:13 - curly_braces_in_flow_control_structures
+warning - The '!' will have no effect because the receiver can't be null - lib\presentation\home\home_screen.dart:220:32 - unnecessary_non_null_assertion
+   info - 'value' is deprecated and shouldn't be used. Use initialValue instead. This will set the initial value for the form field. This feature was deprecated after v3.33.0-1.0.pre - lib\presentation\project\project_detail_screen.dart:145:19 - deprecated_member_use
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\presentation\project\project_detail_screen.dart:183:47 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\presentation\project\project_detail_screen.dart:185:54 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\presentation\project\project_detail_screen.dart:193:54 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\presentation\project\project_detail_screen.dart:347:43 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\presentation\project\project_detail_screen.dart:349:50 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\presentation\project\project_detail_screen.dart:380:39 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\presentation\project\project_detail_screen.dart:382:46 - use_build_context_synchronously
+   info - Statements in an if should be enclosed in a block - lib\presentation\project\project_detail_screen.dart:497:25 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block - lib\presentation\project\project_detail_screen.dart:499:25 - curly_braces_in_flow_control_structures
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\presentation\task\employee_task_list_screen.dart:100:37 - use_build_context_synchronously
+   info - Statements in an if should be enclosed in a block - lib\presentation\task\employee_task_list_screen.dart:126:13 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block - lib\presentation\task\employee_task_list_screen.dart:128:13 - curly_braces_in_flow_control_structures
+

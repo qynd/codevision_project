@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart';
 import '../data/models/user_model.dart';
 
 class AuthService {
@@ -28,7 +29,7 @@ class AuthService {
 
       return UserModel.fromJson(response);
     } catch (e) {
-      print('Error ambil data detail: $e');
+      debugPrint('Error ambil data detail: $e');
       return null;
     }
   }

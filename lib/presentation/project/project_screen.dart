@@ -26,7 +26,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
   // Ambil Data User Saat Ini
   Future<void> _fetchCurrentUser() async {
     final user = await AuthService().getCurrentUserData();
-    if (mounted) {
+    if (context.mounted) {
       setState(() {
         _currentUser = user;
         _isLoadingUser = false;
@@ -59,9 +59,9 @@ class _ProjectScreenState extends State<ProjectScreen> {
           .from('tasks')
           .select('project_id')
           .eq('assigned_to', _currentUser!.id);
-      
+
       final tasksData = tasksResponse as List<dynamic>;
-      
+
       // 2. Kumpulkan ID Project yang unik
       final projectIds = tasksData.map((t) => t['project_id']).toSet().toList();
 
@@ -107,151 +107,153 @@ class _ProjectScreenState extends State<ProjectScreen> {
           ),
         ],
       ),
-      body: _isLoadingUser 
-          ? const Center(child: CircularProgressIndicator()) 
+      body: _isLoadingUser
+          ? const Center(child: CircularProgressIndicator())
           : FutureBuilder<List<ProjectModel>>(
-        future: _fetchProjects(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+              future: _fetchProjects(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-          if (snapshot.hasError) {
-            return Center(child: Text("Error: ${snapshot.error}"));
-          }
+                if (snapshot.hasError) {
+                  return Center(child: Text("Error: ${snapshot.error}"));
+                }
 
-          if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return Center(
-              child: Text(
-                _currentUser?.role == 'Admin' 
-                  ? "Belum ada proyek saat ini." // Pesan untuk Admin
-                  : "Anda belum memiliki tugas di proyek manapun." // Pesan untuk Pegawai
-              ),
-            );
-          }
+                if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return Center(
+                    child: Text(
+                      _currentUser?.role == 'Admin'
+                          ? "Belum ada proyek saat ini." // Pesan untuk Admin
+                          : "Anda belum memiliki tugas di proyek manapun.", // Pesan untuk Pegawai
+                    ),
+                  );
+                }
 
-          final projects = snapshot.data!;
+                final projects = snapshot.data!;
 
-          return ListView.separated(
-            padding: const EdgeInsets.all(16),
-            itemCount: projects.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 12),
-            itemBuilder: (context, index) {
-              final project = projects[index];
-              return Card(
-                elevation: 3,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: InkWell(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            ProjectDetailScreen(project: project),
+                return ListView.separated(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: projects.length,
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(height: 12),
+                  itemBuilder: (context, index) {
+                    final project = projects[index];
+                    return Card(
+                      elevation: 3,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: InkWell(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  ProjectDetailScreen(project: project),
+                            ),
+                          );
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Baris Atas: Nama Proyek & Chip Status
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      project.namaProyek,
+                                      style: const TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: _getStatusColor(
+                                        project.status,
+                                      ).withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(
+                                        color: _getStatusColor(project.status),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      project.status,
+                                      style: TextStyle(
+                                        color: _getStatusColor(project.status),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+
+                              // Deskripsi
+                              Text(
+                                project.deskripsi,
+                                style: TextStyle(color: Colors.grey[600]),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const Divider(height: 24),
+
+                              // Baris Bawah: Tanggal & Icon
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.calendar_today,
+                                    size: 14,
+                                    color: Colors.grey,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    "Deadline: ${project.dueDate}",
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  const Text(
+                                    "Lihat Detail",
+                                    style: TextStyle(
+                                      color: Colors.indigo,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const Icon(
+                                    Icons.arrow_forward_ios,
+                                    size: 12,
+                                    color: Colors.indigo,
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     );
                   },
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Baris Atas: Nama Proyek & Chip Status
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                project.namaProyek,
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: _getStatusColor(
-                                  project.status,
-                                ).withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: _getStatusColor(project.status),
-                                ),
-                              ),
-                              child: Text(
-                                project.status,
-                                style: TextStyle(
-                                  color: _getStatusColor(project.status),
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-
-                        // Deskripsi
-                        Text(
-                          project.deskripsi,
-                          style: TextStyle(color: Colors.grey[600]),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const Divider(height: 24),
-
-                        // Baris Bawah: Tanggal & Icon
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.calendar_today,
-                              size: 14,
-                              color: Colors.grey,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              "Deadline: ${project.dueDate}",
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey,
-                              ),
-                            ),
-                            const Spacer(),
-                            const Text(
-                              "Lihat Detail",
-                              style: TextStyle(
-                                color: Colors.indigo,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const Icon(
-                              Icons.arrow_forward_ios,
-                              size: 12,
-                              color: Colors.indigo,
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
-          );
-        },
-      ),
+                );
+              },
+            ),
       // Tombol Tambah Proyek (Hanya Admin yang bisa lihat)
-      floatingActionButton: _currentUser?.role == 'Admin' 
+      floatingActionButton: _currentUser?.role == 'Admin'
           ? FloatingActionButton(
               onPressed: () {
                 ScaffoldMessenger.of(context).showSnackBar(

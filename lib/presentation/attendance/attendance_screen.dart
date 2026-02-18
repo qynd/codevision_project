@@ -73,12 +73,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             String status = letterData['status'] ?? 'Pending';
             _currentStatus = status == 'Pending' ? "$jenis (Menunggu)" : jenis;
             _attendanceId = null; // Tidak ada ID absen
-            _checkInTime = null; 
+            _checkInTime = null;
             _checkOutTime = null;
           } else {
-             // Reset jika tidak ada data sama sekali
+            // Reset jika tidak ada data sama sekali
             _attendanceId = null;
-            _checkInTime = null; 
+            _checkInTime = null;
             _checkOutTime = null;
             _currentStatus = '';
           }
@@ -111,7 +111,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
     try {
       return await Geolocator.getCurrentPosition(
-        timeLimit: const Duration(seconds: 10),
+        locationSettings: const LocationSettings(
+          timeLimit: Duration(seconds: 10),
+        ),
       );
     } catch (e) {
       return null;
@@ -124,12 +126,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
     if (pos == null) {
       setState(() => _isLoading = false);
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text("Gagal mengambil lokasi. Pastikan GPS aktif."),
           ),
         );
+      }
       return;
     }
 
@@ -139,7 +142,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       final today = DateFormat('yyyy-MM-dd').format(now);
 
       // --- CEK APAKAH SEDANG IZIN/SAKIT/CUTI (Pre-Check) ---
-      final letterRes = await supabase.from('letters')
+      final letterRes = await supabase
+          .from('letters')
           .select()
           .eq('user_id', user.id)
           .lte('tanggal_mulai', today)
@@ -149,25 +153,41 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           .maybeSingle();
 
       if (letterRes != null) {
-          if (mounted) {
-            final jenis = letterRes['jenis_surat'] ?? 'Izin';
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              content: Text("GAGAL: Anda sedang status $jenis. Tidak dapat Absen Masuk."), 
-              backgroundColor: Colors.red
-            ));
-            _getTodayAttendance(); 
-          }
-          setState(() => _isLoading = false);
-          return;
+        if (mounted) {
+          final jenis = letterRes['jenis_surat'] ?? 'Izin';
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                "GAGAL: Anda sedang status $jenis. Tidak dapat Absen Masuk.",
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+          _getTodayAttendance();
+        }
+        setState(() => _isLoading = false);
+        return;
       }
       // -----------------------------------------------------
 
       // --- CEK DUPLIKASI ---
-      final existingCheck = await supabase.from('attendances').select().eq('user_id', user.id).eq('tanggal', today).limit(1).maybeSingle();
+      final existingCheck = await supabase
+          .from('attendances')
+          .select()
+          .eq('user_id', user.id)
+          .eq('tanggal', today)
+          .limit(1)
+          .maybeSingle();
       if (existingCheck != null) {
-         if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Data diperbarui (Anda sudah absen).")));
-         _getTodayAttendance(); // Refresh UI
-         return;
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Data diperbarui (Anda sudah absen)."),
+            ),
+          );
+        }
+        _getTodayAttendance(); // Refresh UI
+        return;
       }
       // --------------------
 
@@ -205,10 +225,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           await _getTodayAttendance();
         }
       } else {
-        if (mounted)
+        if (mounted) {
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(SnackBar(content: Text("Error: $e")));
+        }
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -217,25 +238,41 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   Future<void> _handleCheckOut() async {
     if (_attendanceId == null) {
-       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Error: ID Absensi tidak ditemukan. Silakan refresh halaman.")));
-       await _getTodayAttendance(); // Coba ambil lagi siapa tahu ada
-       return;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              "Error: ID Absensi tidak ditemukan. Silakan refresh halaman.",
+            ),
+          ),
+        );
+      }
+      await _getTodayAttendance(); // Coba ambil lagi siapa tahu ada
+      return;
     }
     setState(() => _isLoading = true);
     try {
       // --- CEK APAKAH SUDAH CHECK OUT ---
-      final existingData = await supabase.from('attendances')
+      final existingData = await supabase
+          .from('attendances')
           .select('check_out_time')
           .eq('id', _attendanceId!)
           .limit(1)
           .maybeSingle();
 
       if (existingData != null && existingData['check_out_time'] != null) {
-         if (mounted) {
-           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Data diperbarui (Anda sudah pulang).")));
-           setState(() => _checkOutTime = DateTime.parse(existingData['check_out_time']));
-         } 
-         return;
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Data diperbarui (Anda sudah pulang)."),
+            ),
+          );
+          setState(
+            () =>
+                _checkOutTime = DateTime.parse(existingData['check_out_time']),
+          );
+        }
+        return;
       }
       // ----------------------------------
 
@@ -383,7 +420,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   ),
                   const SizedBox(height: 40),
 
-                  if ((_currentStatus == 'Hadir' || _currentStatus == '') || (_checkInTime == null && _currentStatus == ''))
+                  if ((_currentStatus == 'Hadir' || _currentStatus == '') ||
+                      (_checkInTime == null && _currentStatus == ''))
                     Row(
                       children: [
                         _buildTimeCard(

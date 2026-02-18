@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
-
-import '../../../core/constants/app_theme.dart';
 import '../../../core/services/pdf_service.dart';
 import '../../../data/models/project_model.dart';
 import '../../../data/models/task_model.dart';
@@ -58,9 +56,11 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
       }
     } catch (e) {
       debugPrint("Error fetching data: $e");
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Error: $e")));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Error: $e")));
+      }
     } finally {
       setState(() => _isLoading = false);
     }
@@ -372,7 +372,8 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
                             border: OutlineInputBorder(),
                             labelText: "Status",
                           ),
-                          value: selectedStatus,
+                          key: ValueKey(selectedStatus),
+                          initialValue: selectedStatus,
                           items: _getStatusOptions()
                               .map(
                                 (e) =>

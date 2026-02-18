@@ -12,15 +12,15 @@ class AddEmployeeScreen extends StatefulWidget {
 class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
   final supabase = Supabase.instance.client;
   final _formKey = GlobalKey<FormState>();
-  
+
   // 1. Tambahkan Controller untuk NIP
-  final _nipController = TextEditingController(); 
+  final _nipController = TextEditingController();
   final _namaController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _jabatanController = TextEditingController();
-  
-  String _selectedRole = 'pegawai'; 
+
+  String _selectedRole = 'pegawai';
   bool _isLoading = false;
 
   Future<void> _createAccount() async {
@@ -54,18 +54,20 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
               title: const Text("Pegawai Berhasil Ditambahkan"),
               content: const Text(
                 "Akun pegawai baru telah dibuat.\n\n"
-                "Anda harus login ulang sebagai Admin karena sesi telah berubah."
+                "Anda harus login ulang sebagai Admin karena sesi telah berubah.",
               ),
               actions: [
                 ElevatedButton(
                   onPressed: () {
                     Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(builder: (context) => const LoginScreen()), 
-                      (route) => false
+                      MaterialPageRoute(
+                        builder: (context) => const LoginScreen(),
+                      ),
+                      (route) => false,
                     );
-                  }, 
-                  child: const Text("OK, Login Ulang")
-                )
+                  },
+                  child: const Text("OK, Login Ulang"),
+                ),
               ],
             ),
           );
@@ -73,7 +75,9 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Gagal: $e"), backgroundColor: Colors.red));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Gagal: $e"), backgroundColor: Colors.red),
+        );
       }
       setState(() => _isLoading = false);
     }
@@ -93,9 +97,9 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
               TextFormField(
                 controller: _nipController,
                 decoration: const InputDecoration(
-                  labelText: "NIP (Nomor Induk Pegawai)", 
+                  labelText: "NIP (Nomor Induk Pegawai)",
                   border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.badge)
+                  prefixIcon: Icon(Icons.badge),
                 ),
                 validator: (val) => val!.isEmpty ? 'NIP Wajib diisi' : null,
               ),
@@ -103,38 +107,60 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
 
               TextFormField(
                 controller: _namaController,
-                decoration: const InputDecoration(labelText: "Nama Lengkap", border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  labelText: "Nama Lengkap",
+                  border: OutlineInputBorder(),
+                ),
                 validator: (val) => val!.isEmpty ? 'Wajib diisi' : null,
               ),
               const SizedBox(height: 16),
-              
+
               TextFormField(
                 controller: _emailController,
-                decoration: const InputDecoration(labelText: "Email Login", border: OutlineInputBorder()),
-                validator: (val) => !val!.contains('@') ? 'Email tidak valid' : null,
+                decoration: const InputDecoration(
+                  labelText: "Email Login",
+                  border: OutlineInputBorder(),
+                ),
+                validator: (val) =>
+                    !val!.contains('@') ? 'Email tidak valid' : null,
               ),
               const SizedBox(height: 16),
-              
+
               TextFormField(
                 controller: _passwordController,
-                decoration: const InputDecoration(labelText: "Password Awal", border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  labelText: "Password Awal",
+                  border: OutlineInputBorder(),
+                ),
                 validator: (val) => val!.length < 6 ? 'Min 6 karakter' : null,
               ),
               const SizedBox(height: 16),
-              
+
               TextFormField(
                 controller: _jabatanController,
-                decoration: const InputDecoration(labelText: "Jabatan (Misal: Staf IT)", border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  labelText: "Jabatan (Misal: Staf IT)",
+                  border: OutlineInputBorder(),
+                ),
                 validator: (val) => val!.isEmpty ? 'Wajib diisi' : null,
               ),
               const SizedBox(height: 16),
-              
+
               DropdownButtonFormField<String>(
-                value: _selectedRole,
-                decoration: const InputDecoration(labelText: "Hak Akses (Role)", border: OutlineInputBorder()),
+                initialValue: _selectedRole,
+                decoration: const InputDecoration(
+                  labelText: "Hak Akses (Role)",
+                  border: OutlineInputBorder(),
+                ),
                 items: const [
-                  DropdownMenuItem(value: 'pegawai', child: Text("Pegawai Biasa")),
-                  DropdownMenuItem(value: 'admin', child: Text("Admin (Full Akses)")),
+                  DropdownMenuItem(
+                    value: 'pegawai',
+                    child: Text("Pegawai Biasa"),
+                  ),
+                  DropdownMenuItem(
+                    value: 'admin',
+                    child: Text("Admin (Full Akses)"),
+                  ),
                 ],
                 onChanged: (val) => setState(() => _selectedRole = val!),
               ),
@@ -145,10 +171,13 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
                 height: 50,
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _createAccount,
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo, foregroundColor: Colors.white),
-                  child: _isLoading 
-                    ? const CircularProgressIndicator(color: Colors.white) 
-                    : const Text("SIMPAN PEGAWAI"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.indigo,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: _isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text("SIMPAN PEGAWAI"),
                 ),
               ),
             ],

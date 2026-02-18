@@ -14,23 +14,32 @@ class AdminAddProjectScreen extends StatefulWidget {
 class _AdminAddProjectScreenState extends State<AdminAddProjectScreen> {
   final supabase = Supabase.instance.client;
   final _formKey = GlobalKey<FormState>();
-  
+
   late TextEditingController _titleController;
   late TextEditingController _descController;
   late TextEditingController _dateController;
-  
+
   String _selectedStatus = 'In Progress'; // Default Status
   bool _isLoading = false;
 
-  final List<String> _statusOptions = ['New', 'In Progress', 'Completed', 'On Hold'];
+  final List<String> _statusOptions = [
+    'New',
+    'In Progress',
+    'Completed',
+    'On Hold',
+  ];
 
   @override
   void initState() {
     super.initState();
     // Jika edit, isi field dengan data lama. Jika baru, kosongkan.
-    _titleController = TextEditingController(text: widget.project?['nama_proyek'] ?? '');
-    _descController = TextEditingController(text: widget.project?['deskripsi'] ?? '');
-    
+    _titleController = TextEditingController(
+      text: widget.project?['nama_proyek'] ?? '',
+    );
+    _descController = TextEditingController(
+      text: widget.project?['deskripsi'] ?? '',
+    );
+
     // Status Init
     if (widget.project != null && widget.project!['status'] != null) {
       _selectedStatus = widget.project!['status'];
@@ -39,12 +48,12 @@ class _AdminAddProjectScreenState extends State<AdminAddProjectScreen> {
         _statusOptions.add(_selectedStatus);
       }
     }
-    
+
     // Handle tanggal untuk edit
     String initialDate = '';
     if (widget.project != null && widget.project!['due_date'] != null) {
-       // Format dari yyyy-mm-dd (database) ke textfield
-       initialDate = widget.project!['due_date']; 
+      // Format dari yyyy-mm-dd (database) ke textfield
+      initialDate = widget.project!['due_date'];
     }
     _dateController = TextEditingController(text: initialDate);
   }
@@ -55,7 +64,7 @@ class _AdminAddProjectScreenState extends State<AdminAddProjectScreen> {
 
     try {
       final now = DateTime.now();
-      
+
       if (widget.project == null) {
         // --- MODE TAMBAH (INSERT) ---
         await supabase.from('projects').insert({
@@ -69,25 +78,35 @@ class _AdminAddProjectScreenState extends State<AdminAddProjectScreen> {
       } else {
         // --- MODE EDIT (UPDATE) ---
         // Disini kita sertakan STATUS agar bisa diupdate
-        await supabase.from('projects').update({
-          'nama_proyek': _titleController.text,
-          'deskripsi': _descController.text,
-          'due_date': _dateController.text,
-          'status': _selectedStatus, // <-- UPDATE STATUS
-        }).eq('id', widget.project!['id']); // Update berdasarkan ID
+        await supabase
+            .from('projects')
+            .update({
+              'nama_proyek': _titleController.text,
+              'deskripsi': _descController.text,
+              'due_date': _dateController.text,
+              'status': _selectedStatus, // <-- UPDATE STATUS
+            })
+            .eq('id', widget.project!['id']); // Update berdasarkan ID
       }
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(widget.project == null ? "Proyek dibuat!" : "Proyek diperbarui!"))
-        );
-        Navigator.pop(context, true); 
-      }
+      if (!mounted) return;
 
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            widget.project == null ? "Proyek dibuat!" : "Proyek diperbarui!",
+          ),
+        ),
+      );
+      Navigator.pop(context, true);
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Error: $e")));
+      }
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (context.mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -106,13 +125,19 @@ class _AdminAddProjectScreenState extends State<AdminAddProjectScreen> {
             children: [
               TextFormField(
                 controller: _titleController,
-                decoration: const InputDecoration(labelText: "Nama Proyek", border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  labelText: "Nama Proyek",
+                  border: OutlineInputBorder(),
+                ),
                 validator: (val) => val!.isEmpty ? 'Wajib diisi' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _descController,
-                decoration: const InputDecoration(labelText: "Deskripsi Singkat", border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  labelText: "Deskripsi Singkat",
+                  border: OutlineInputBorder(),
+                ),
                 maxLines: 3,
                 validator: (val) => val!.isEmpty ? 'Wajib diisi' : null,
               ),
@@ -121,37 +146,41 @@ class _AdminAddProjectScreenState extends State<AdminAddProjectScreen> {
                 controller: _dateController,
                 readOnly: true,
                 decoration: const InputDecoration(
-                  labelText: "Tenggat Waktu (Deadline)", 
+                  labelText: "Tenggat Waktu (Deadline)",
                   border: OutlineInputBorder(),
-                  suffixIcon: Icon(Icons.calendar_month)
+                  suffixIcon: Icon(Icons.calendar_month),
                 ),
                 onTap: () async {
                   DateTime? picked = await showDatePicker(
-                    context: context, 
+                    context: context,
                     initialDate: DateTime.now().add(const Duration(days: 7)),
-                    firstDate: DateTime.now(), 
-                    lastDate: DateTime(2030)
+                    firstDate: DateTime.now(),
+                    lastDate: DateTime(2030),
                   );
                   if (picked != null) {
-                    _dateController.text = DateFormat('yyyy-MM-dd').format(picked);
+                    _dateController.text = DateFormat(
+                      'yyyy-MM-dd',
+                    ).format(picked);
                   }
                 },
                 validator: (val) => val!.isEmpty ? 'Wajib diisi' : null,
               ),
-              
+
               // --- DROPDOWN STATUS (Hanya muncul saat Edit) ---
               if (isEdit) ...[
                 const SizedBox(height: 16),
-                const Text("Status Proyek", style: TextStyle(fontWeight: FontWeight.bold)),
+                const Text(
+                  "Status Proyek",
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
-                  value: _selectedStatus,
-                  decoration: const InputDecoration(border: OutlineInputBorder()),
+                  initialValue: _selectedStatus,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                  ),
                   items: _statusOptions.map((status) {
-                    return DropdownMenuItem(
-                      value: status,
-                      child: Text(status),
-                    );
+                    return DropdownMenuItem(value: status, child: Text(status));
                   }).toList(),
                   onChanged: (val) {
                     setState(() {
@@ -167,10 +196,13 @@ class _AdminAddProjectScreenState extends State<AdminAddProjectScreen> {
                 height: 50,
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _saveProject,
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo, foregroundColor: Colors.white),
-                  child: _isLoading 
-                    ? const CircularProgressIndicator(color: Colors.white) 
-                    : Text(isEdit ? "UPDATE PROYEK" : "SIMPAN PROYEK"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.indigo,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: _isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : Text(isEdit ? "UPDATE PROYEK" : "SIMPAN PROYEK"),
                 ),
               ),
             ],

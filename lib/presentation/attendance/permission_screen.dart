@@ -11,15 +11,15 @@ class PermissionScreen extends StatefulWidget {
 
 class _PermissionScreenState extends State<PermissionScreen> {
   final _formKey = GlobalKey<FormState>();
-  
+
   // Controllers
   final _reasonController = TextEditingController();
-  final _durationController = TextEditingController(text: '1'); 
-  final _dateController = TextEditingController(); 
-  
+  final _durationController = TextEditingController(text: '1');
+  final _dateController = TextEditingController();
+
   final supabase = Supabase.instance.client;
-  
-  String _selectedType = 'Izin'; 
+
+  String _selectedType = 'Izin';
   DateTime _selectedDate = DateTime.now(); // Default hari ini
   bool _isLoading = false;
 
@@ -27,7 +27,10 @@ class _PermissionScreenState extends State<PermissionScreen> {
   void initState() {
     super.initState();
     // Set default tampilan tanggal hari ini di input field
-    _dateController.text = DateFormat('dd MMMM yyyy', 'id_ID').format(_selectedDate);
+    _dateController.text = DateFormat(
+      'dd MMMM yyyy',
+      'id_ID',
+    ).format(_selectedDate);
   }
 
   @override
@@ -49,7 +52,10 @@ class _PermissionScreenState extends State<PermissionScreen> {
     if (picked != null) {
       setState(() {
         _selectedDate = picked;
-        _dateController.text = DateFormat('dd MMMM yyyy', 'id_ID').format(picked);
+        _dateController.text = DateFormat(
+          'dd MMMM yyyy',
+          'id_ID',
+        ).format(picked);
       });
     }
   }
@@ -67,19 +73,25 @@ class _PermissionScreenState extends State<PermissionScreen> {
       // 0. CEK APAKAH SUDAH ABSEN 'HADIR' HARI INI
       // Jika sudah absen masuk, tidak boleh izin/sakit di hari yang sama
       final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
-      final existingAttendance = await supabase.from('attendances')
+      final existingAttendance = await supabase
+          .from('attendances')
           .select()
           .eq('user_id', user.id)
           .eq('tanggal', today)
           .maybeSingle();
 
       if (existingAttendance != null) {
-         if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("GAGAL: Anda sudah melakukan Absen Masuk hari ini. Tidak dapat mengajukan Izin/Sakit."), backgroundColor: Colors.red),
-            );
-         }
-         return; // STOP PROSES
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                "GAGAL: Anda sudah melakukan Absen Masuk hari ini. Tidak dapat mengajukan Izin/Sakit.",
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return; // STOP PROSES
       }
 
       // 1. Hitung Tanggal Selesai
@@ -87,7 +99,7 @@ class _PermissionScreenState extends State<PermissionScreen> {
       if (_selectedType == 'Cuti') {
         duration = int.tryParse(_durationController.text) ?? 1;
       }
-      
+
       // Hitung end date berdasarkan durasi
       // Jika durasi 1 hari, start & end sama. Jika 2 hari, end = start + 1 hari.
       final endDate = _selectedDate.add(Duration(days: duration - 1));
@@ -108,7 +120,9 @@ class _PermissionScreenState extends State<PermissionScreen> {
           context: context,
           builder: (context) => AlertDialog(
             title: const Text("Berhasil Dikirim"),
-            content: const Text("Pengajuan Anda telah dikirim dan menunggu persetujuan Admin."),
+            content: const Text(
+              "Pengajuan Anda telah dikirim dan menunggu persetujuan Admin.",
+            ),
             actions: [
               TextButton(
                 onPressed: () {
@@ -116,7 +130,7 @@ class _PermissionScreenState extends State<PermissionScreen> {
                   Navigator.pop(context, true); // Kembali ke halaman sebelumnya
                 },
                 child: const Text("OK"),
-              )
+              ),
             ],
           ),
         );
@@ -124,7 +138,10 @@ class _PermissionScreenState extends State<PermissionScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Gagal mengirim: $e"), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text("Gagal mengirim: $e"),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
@@ -148,10 +165,13 @@ class _PermissionScreenState extends State<PermissionScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // --- JENIS PENGAJUAN ---
-              const Text("Jenis Pengajuan", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              const Text(
+                "Jenis Pengajuan",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
-                value: _selectedType,
+                initialValue: _selectedType,
                 decoration: const InputDecoration(border: OutlineInputBorder()),
                 items: ['Izin', 'Sakit', 'Cuti'].map((String value) {
                   return DropdownMenuItem<String>(
@@ -159,9 +179,13 @@ class _PermissionScreenState extends State<PermissionScreen> {
                     child: Row(
                       children: [
                         Icon(
-                          value == 'Sakit' ? Icons.local_hospital : 
-                          value == 'Cuti' ? Icons.beach_access : Icons.assignment,
-                          color: Colors.indigo, size: 20
+                          value == 'Sakit'
+                              ? Icons.local_hospital
+                              : value == 'Cuti'
+                              ? Icons.beach_access
+                              : Icons.assignment,
+                          color: Colors.indigo,
+                          size: 20,
                         ),
                         const SizedBox(width: 10),
                         Text(value),
@@ -176,7 +200,10 @@ class _PermissionScreenState extends State<PermissionScreen> {
               const SizedBox(height: 20),
 
               // --- TANGGAL MULAI ---
-              const Text("Tanggal Mulai", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              const Text(
+                "Tanggal Mulai",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
               const SizedBox(height: 8),
               TextFormField(
                 controller: _dateController,
@@ -188,10 +215,13 @@ class _PermissionScreenState extends State<PermissionScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-              
+
               // --- DURASI (HANYA MUNCUL JIKA CUTI) ---
               if (_selectedType == 'Cuti') ...[
-                const Text("Lama Cuti (Hari)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                const Text(
+                  "Lama Cuti (Hari)",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _durationController,
@@ -211,7 +241,10 @@ class _PermissionScreenState extends State<PermissionScreen> {
               ],
 
               // --- KETERANGAN ---
-              const Text("Keterangan / Alasan", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              const Text(
+                "Keterangan / Alasan",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
               const SizedBox(height: 8),
               TextFormField(
                 controller: _reasonController,
@@ -236,13 +269,21 @@ class _PermissionScreenState extends State<PermissionScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.indigo,
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
-                  child: _isLoading 
-                    ? const CircularProgressIndicator(color: Colors.white) 
-                    : const Text("KIRIM PENGAJUAN", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  child: _isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text(
+                          "KIRIM PENGAJUAN",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
                 ),
-              )
+              ),
             ],
           ),
         ),

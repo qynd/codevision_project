@@ -19,11 +19,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _namaController = TextEditingController();
   final _phoneController = TextEditingController();
   final _alamatController = TextEditingController();
-  
+
   String _email = '';
   String _jabatan = '';
   String? _currentAvatarUrl;
-  
+
   XFile? _pickedImage;
   bool _isLoading = false;
 
@@ -39,7 +39,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final user = supabase.auth.currentUser;
       if (user == null) return;
 
-      final data = await supabase.from('users').select().eq('id', user.id).single();
+      final data = await supabase
+          .from('users')
+          .select()
+          .eq('id', user.id)
+          .single();
 
       setState(() {
         _namaController.text = data['nama'] ?? '';
@@ -50,15 +54,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _currentAvatarUrl = data['avatar_url'];
       });
     } catch (e) {
-      if(mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Gagal load profil: $e")));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Gagal load profil: $e")));
+      }
     } finally {
-      if(mounted) setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   Future<void> _pickImage() async {
     final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+    final XFile? image = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+    );
     if (image != null) {
       setState(() => _pickedImage = image);
     }
@@ -76,36 +87,51 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (_pickedImage != null) {
         final bytes = await _pickedImage!.readAsBytes();
         final fileExt = _pickedImage!.name.split('.').last;
-        final fileName = '${user.id}_${DateTime.now().millisecondsSinceEpoch}.$fileExt';
+        final fileName =
+            '${user.id}_${DateTime.now().millisecondsSinceEpoch}.$fileExt';
         final path = fileName;
 
-        await supabase.storage.from('avatars').uploadBinary(
-          path, bytes,
-          fileOptions: FileOptions(contentType: 'image/$fileExt', upsert: true),
-        );
+        await supabase.storage
+            .from('avatars')
+            .uploadBinary(
+              path,
+              bytes,
+              fileOptions: FileOptions(
+                contentType: 'image/$fileExt',
+                upsert: true,
+              ),
+            );
         newAvatarUrl = supabase.storage.from('avatars').getPublicUrl(path);
       }
 
-      await supabase.from('users').update({
-        'nama': _namaController.text,
-        'no_hp': _phoneController.text,
-        'alamat': _alamatController.text,
-        'avatar_url': newAvatarUrl,
-        'updated_at': DateTime.now().toIso8601String(),
-      }).eq('id', user.id);
+      await supabase
+          .from('users')
+          .update({
+            'nama': _namaController.text,
+            'no_hp': _phoneController.text,
+            'alamat': _alamatController.text,
+            'avatar_url': newAvatarUrl,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', user.id);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Profil berhasil diperbarui!")));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Profil berhasil diperbarui!")),
+        );
         setState(() {
-           _currentAvatarUrl = newAvatarUrl;
-           _pickedImage = null;
+          _currentAvatarUrl = newAvatarUrl;
+          _pickedImage = null;
         });
       }
-
     } catch (e) {
-      if(mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Gagal update: $e")));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Gagal update: $e")));
+      }
     } finally {
-      if(mounted) setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -118,8 +144,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
         title: const Text("Keluar Aplikasi"),
         content: const Text("Apakah Anda yakin ingin logout?"),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Batal")),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("Ya, Keluar", style: TextStyle(color: Colors.red))),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("Batal"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(
+              "Ya, Keluar",
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
         ],
       ),
     );
@@ -129,8 +164,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (mounted) {
         // Pindah ke Halaman Login dan hapus semua history navigasi sebelumnya
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const LoginScreen()), 
-          (route) => false
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
+          (route) => false,
         );
       }
     }
@@ -150,7 +185,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       backgroundImage = NetworkImage(_currentAvatarUrl!);
     } else {
       childWidget = Text(
-        _namaController.text.isNotEmpty ? _namaController.text[0].toUpperCase() : '?',
+        _namaController.text.isNotEmpty
+            ? _namaController.text[0].toUpperCase()
+            : '?',
         style: const TextStyle(fontSize: 40, color: Colors.indigo),
       );
     }
@@ -171,11 +208,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
               onTap: _pickImage,
               child: Container(
                 padding: const EdgeInsets.all(8),
-                decoration: const BoxDecoration(color: Colors.indigo, shape: BoxShape.circle),
-                child: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
+                decoration: const BoxDecoration(
+                  color: Colors.indigo,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.camera_alt,
+                  color: Colors.white,
+                  size: 20,
+                ),
               ),
             ),
-          )
+          ),
         ],
       ),
     );
@@ -195,26 +239,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   children: [
                     _buildAvatarUI(),
                     const SizedBox(height: 30),
-                    
+
                     _buildReadOnlyField("Email", _email, Icons.email),
                     _buildReadOnlyField("Jabatan", _jabatan, Icons.work),
                     const Divider(height: 30),
-                    
+
                     TextFormField(
                       controller: _namaController,
-                      decoration: const InputDecoration(labelText: 'Nama Lengkap', border: OutlineInputBorder(), prefixIcon: Icon(Icons.person)),
-                      validator: (val) => val!.isEmpty ? 'Nama tidak boleh kosong' : null,
+                      decoration: const InputDecoration(
+                        labelText: 'Nama Lengkap',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.person),
+                      ),
+                      validator: (val) =>
+                          val!.isEmpty ? 'Nama tidak boleh kosong' : null,
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _phoneController,
-                      decoration: const InputDecoration(labelText: 'No. Handphone', border: OutlineInputBorder(), prefixIcon: Icon(Icons.phone)),
+                      decoration: const InputDecoration(
+                        labelText: 'No. Handphone',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.phone),
+                      ),
                       keyboardType: TextInputType.phone,
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _alamatController,
-                      decoration: const InputDecoration(labelText: 'Alamat Domisili', border: OutlineInputBorder(), prefixIcon: Icon(Icons.home)),
+                      decoration: const InputDecoration(
+                        labelText: 'Alamat Domisili',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.home),
+                      ),
                       maxLines: 2,
                     ),
                     const SizedBox(height: 30),
@@ -225,10 +282,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       height: 50,
                       child: ElevatedButton(
                         onPressed: _isLoading ? null : _updateProfile,
-                        style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo, foregroundColor: Colors.white),
-                        child: _isLoading 
-                          ? const CircularProgressIndicator(color: Colors.white)
-                          : const Text("SIMPAN PERUBAHAN"),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.indigo,
+                          foregroundColor: Colors.white,
+                        ),
+                        child: _isLoading
+                            ? const CircularProgressIndicator(
+                                color: Colors.white,
+                              )
+                            : const Text("SIMPAN PERUBAHAN"),
                       ),
                     ),
 
@@ -241,8 +303,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: OutlinedButton.icon(
                         onPressed: _signOut, // Panggil fungsi Logout
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.red, 
-                          side: const BorderSide(color: Colors.red)
+                          foregroundColor: Colors.red,
+                          side: const BorderSide(color: Colors.red),
                         ),
                         icon: const Icon(Icons.logout),
                         label: const Text("KELUAR APLIKASI"),
@@ -268,7 +330,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           prefixIcon: Icon(icon, color: Colors.grey),
           filled: true,
           fillColor: Colors.grey.shade100,
-          disabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.grey.shade300)),
+          disabledBorder: OutlineInputBorder(
+            borderSide: BorderSide(color: Colors.grey.shade300),
+          ),
         ),
       ),
     );

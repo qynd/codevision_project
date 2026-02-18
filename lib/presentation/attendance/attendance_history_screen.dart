@@ -6,7 +6,8 @@ class AttendanceHistoryScreen extends StatefulWidget {
   const AttendanceHistoryScreen({super.key});
 
   @override
-  State<AttendanceHistoryScreen> createState() => _AttendanceHistoryScreenState();
+  State<AttendanceHistoryScreen> createState() =>
+      _AttendanceHistoryScreenState();
 }
 
 class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
@@ -55,7 +56,7 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
         // Surat biasanya punya rentang tanggal, kita ambil tanggal mulainya saja untuk display di list
         combinedList.add({
           'type': 'letter', // Penanda
-          'tanggal': item['tanggal_mulai'], 
+          'tanggal': item['tanggal_mulai'],
           'status': item['jenis_surat'] ?? 'Izin',
           'keterangan': item['keterangan'] ?? '-',
         });
@@ -69,7 +70,6 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
       });
 
       return combinedList;
-
     } catch (e) {
       debugPrint("Error fetch history: $e");
       return [];
@@ -79,11 +79,16 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
   // Helper warna status
   Color _getStatusColor(String status) {
     switch (status) {
-      case 'Hadir': return Colors.green;
-      case 'Izin': return Colors.blue;
-      case 'Sakit': return Colors.orange;
-      case 'Cuti': return Colors.purple;
-      default: return Colors.grey;
+      case 'Hadir':
+        return Colors.green;
+      case 'Izin':
+        return Colors.blue;
+      case 'Sakit':
+        return Colors.orange;
+      case 'Cuti':
+        return Colors.purple;
+      default:
+        return Colors.grey;
     }
   }
 
@@ -124,22 +129,38 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
             itemBuilder: (context, index) {
               final log = logs[index];
               final tanggal = DateTime.parse(log['tanggal']);
-              final fmtTanggal = DateFormat('EEEE, d MMMM yyyy', 'id_ID').format(tanggal);
+              final fmtTanggal = DateFormat(
+                'EEEE, d MMMM yyyy',
+                'id_ID',
+              ).format(tanggal);
               final status = log['status'];
 
               // Format Jam (Hanya untuk Hadir)
               String jamMasuk = '-';
               String jamPulang = '-';
               if (log['type'] == 'attendance') {
-                 jamMasuk = log['check_in'] != null ? DateFormat('HH:mm').format(DateTime.parse(log['check_in']).toLocal()) : '-';
-                 jamPulang = log['check_out'] != null ? DateFormat('HH:mm').format(DateTime.parse(log['check_out']).toLocal()) : '-';
+                jamMasuk = log['check_in'] != null
+                    ? DateFormat(
+                        'HH:mm',
+                      ).format(DateTime.parse(log['check_in']).toLocal())
+                    : '-';
+                jamPulang = log['check_out'] != null
+                    ? DateFormat(
+                        'HH:mm',
+                      ).format(DateTime.parse(log['check_out']).toLocal())
+                    : '-';
               }
 
               return Card(
                 elevation: 2,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 16,
+                    horizontal: 16,
+                  ),
                   child: Row(
                     children: [
                       // Kolom Tanggal (Kiri)
@@ -147,7 +168,7 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
                         width: 50,
                         height: 50,
                         decoration: BoxDecoration(
-                          color: _getStatusColor(status).withOpacity(0.1),
+                          color: _getStatusColor(status).withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Column(
@@ -155,17 +176,24 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
                           children: [
                             Text(
                               DateFormat('d').format(tanggal),
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: _getStatusColor(status)),
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                                color: _getStatusColor(status),
+                              ),
                             ),
                             Text(
                               DateFormat('MMM', 'id_ID').format(tanggal),
-                              style: TextStyle(fontSize: 10, color: _getStatusColor(status)),
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: _getStatusColor(status),
+                              ),
                             ),
                           ],
                         ),
                       ),
                       const SizedBox(width: 16),
-                      
+
                       // Kolom Detail (Tengah)
                       Expanded(
                         child: Column(
@@ -173,21 +201,37 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
                           children: [
                             Text(
                               fmtTanggal,
-                              style: const TextStyle(fontWeight: FontWeight.bold),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                             const SizedBox(height: 6),
-                            
+
                             // Tampilan Beda antara 'Hadir' dan 'Surat'
                             if (log['type'] == 'attendance')
                               Row(
                                 children: [
-                                  Icon(Icons.login, size: 14, color: Colors.green[700]),
+                                  Icon(
+                                    Icons.login,
+                                    size: 14,
+                                    color: Colors.green[700],
+                                  ),
                                   const SizedBox(width: 4),
-                                  Text(jamMasuk, style: const TextStyle(fontSize: 12)),
+                                  Text(
+                                    jamMasuk,
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
                                   const SizedBox(width: 12),
-                                  Icon(Icons.logout, size: 14, color: Colors.red[700]),
+                                  Icon(
+                                    Icons.logout,
+                                    size: 14,
+                                    color: Colors.red[700],
+                                  ),
                                   const SizedBox(width: 4),
-                                  Text(jamPulang, style: const TextStyle(fontSize: 12)),
+                                  Text(
+                                    jamPulang,
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
                                 ],
                               )
                             else
@@ -195,7 +239,10 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
                                 "Keterangan: ${log['keterangan']}",
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey,
+                                ),
                               ),
                           ],
                         ),
@@ -203,9 +250,12 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
 
                       // Chip Status (Kanan)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
-                          color: _getStatusColor(status).withOpacity(0.1),
+                          color: _getStatusColor(status).withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
@@ -213,10 +263,10 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
                           style: TextStyle(
                             color: _getStatusColor(status),
                             fontWeight: FontWeight.bold,
-                            fontSize: 12
+                            fontSize: 12,
                           ),
                         ),
-                      )
+                      ),
                     ],
                   ),
                 ),

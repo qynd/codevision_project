@@ -16,7 +16,7 @@ class ProjectDetailScreen extends StatefulWidget {
 
 class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
   final supabase = Supabase.instance.client;
-  
+
   // List untuk menampung data Pegawai yang bisa dipilih
   List<UserModel> _availableUsers = [];
   UserModel? _currentUser;
@@ -34,7 +34,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
   Future<void> _fetchCurrentUserAndUsers() async {
     // 1. Ambil User Login
     final user = await AuthService().getCurrentUserData();
-    
+
     // 2. Ambil Daftar Pegawai (Hanya jika perlu dropdown, tapi kita ambil saja)
     try {
       final response = await supabase.from('users').select();
@@ -61,13 +61,13 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
         .from('tasks')
         .select()
         .eq('project_id', widget.project.id);
-    
+
     // FILTER: Jika Pegawai, hanya ambil tugas miliknya
     // Kecuali jika user Admin, ambil semua
     if (_currentUser!.role != 'Admin') {
       query = query.eq('assigned_to', _currentUser!.id);
     }
-    
+
     final response = await query.order('created_at', ascending: true);
 
     final data = response as List<dynamic>;
@@ -88,11 +88,11 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
   // C. Tambah Tugas dengan Pilihan User (CREATE) - ONLY ADMIN
   void _showAddTaskSheet() {
     // Double check logic (opsional karena FAB juga disembunyikan)
-    if (_currentUser?.role != 'Admin') return; 
+    if (_currentUser?.role != 'Admin') return;
 
     final titleController = TextEditingController();
     final descController = TextEditingController();
-    String? selectedUserId; 
+    String? selectedUserId;
     bool isSubmitting = false;
 
     showModalBottomSheet(
@@ -103,85 +103,121 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
           return Padding(
             padding: EdgeInsets.only(
               bottom: MediaQuery.of(context).viewInsets.bottom,
-              top: 20, left: 20, right: 20
+              top: 20,
+              left: 20,
+              right: 20,
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text("Tambah Tugas Baru", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                const Text(
+                  "Tambah Tugas Baru",
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
                 const SizedBox(height: 16),
-                
+
                 TextField(
                   controller: titleController,
-                  decoration: const InputDecoration(labelText: "Judul Tugas", border: OutlineInputBorder()),
+                  decoration: const InputDecoration(
+                    labelText: "Judul Tugas",
+                    border: OutlineInputBorder(),
+                  ),
                 ),
                 const SizedBox(height: 12),
-                
+
                 TextField(
                   controller: descController,
-                  decoration: const InputDecoration(labelText: "Deskripsi Singkat", border: OutlineInputBorder()),
+                  decoration: const InputDecoration(
+                    labelText: "Deskripsi Singkat",
+                    border: OutlineInputBorder(),
+                  ),
                 ),
                 const SizedBox(height: 12),
 
                 // --- DROPDOWN PILIH PEGAWAI ---
-                DropdownButtonFormField<String>(
+                InputDecorator(
                   decoration: const InputDecoration(
                     labelText: "Tugaskan Kepada (PIC)",
                     border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.person)
+                    prefixIcon: Icon(Icons.person),
                   ),
-                  value: selectedUserId,
-                  items: _availableUsers.map((user) {
-                    return DropdownMenuItem(
-                      value: user.id,
-                      child: Text(user.nama), 
-                    );
-                  }).toList(),
-                  onChanged: (val) {
-                    setSheetState(() => selectedUserId = val);
-                  },
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: selectedUserId,
+                      isExpanded: true,
+                      hint: const Text("Pilih Pegawai"),
+                      items: _availableUsers.map((user) {
+                        return DropdownMenuItem(
+                          value: user.id,
+                          child: Text(user.nama),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        setSheetState(() => selectedUserId = val);
+                      },
+                    ),
+                  ),
                 ),
-                // -----------------------------
 
+                // -----------------------------
                 const SizedBox(height: 20),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo, foregroundColor: Colors.white),
-                    onPressed: isSubmitting ? null : () async {
-                      if (titleController.text.isEmpty) return;
-                      setSheetState(() => isSubmitting = true);
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.indigo,
+                      foregroundColor: Colors.white,
+                    ),
+                    onPressed: isSubmitting
+                        ? null
+                        : () async {
+                            if (titleController.text.isEmpty) return;
+                            setSheetState(() => isSubmitting = true);
 
-                      try {
-                        await supabase.from('tasks').insert({
-                          'project_id': widget.project.id,
-                          'judul': titleController.text,
-                          'deskripsi': descController.text,
-                          'status': 'To Do',
-                          'progress_percent': 0,
-                          'assigned_to': selectedUserId, 
-                        });
+                            try {
+                              await supabase.from('tasks').insert({
+                                'project_id': widget.project.id,
+                                'judul': titleController.text,
+                                'deskripsi': descController.text,
+                                'status': 'To Do',
+                                'progress_percent': 0,
+                                'assigned_to': selectedUserId,
+                              });
 
-                        if (mounted) {
-                          Navigator.pop(context);
-                          setState(() {}); 
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Tugas berhasil ditambahkan")));
-                        }
-                      } catch (e) {
-                         if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
-                      }
-                    },
-                    child: isSubmitting 
-                      ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white)) 
-                      : const Text("SIMPAN TUGAS"),
+                              if (context.mounted) {
+                                Navigator.pop(context);
+                                setState(() {});
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text("Tugas berhasil ditambahkan"),
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text("Error: $e")),
+                                );
+                              }
+                            }
+                          },
+                    child: isSubmitting
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Text("SIMPAN TUGAS"),
                   ),
                 ),
                 const SizedBox(height: 20),
               ],
             ),
           );
-        }
+        },
       ),
     );
   }
@@ -195,20 +231,20 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     // Tentukan Opsi Status
     // Step 1: Default Statuses
     List<String> statusOptions = ['To Do', 'Doing'];
-    
+
     // Step 2: Add 'Waiting Approval' always available
     statusOptions.add('Waiting Approval');
 
     // Step 3: Add 'Done' ONLY if Admin
     if (isAdmin) {
-      statusOptions.add('Done'); 
+      statusOptions.add('Done');
     }
 
     // Pastikan status saat ini ada di opsi (jika sudah Done, tetap tampilkan agar tidak error)
     if (!statusOptions.contains(selectedStatus)) {
       statusOptions.add(selectedStatus);
     }
-    
+
     showDialog(
       context: context,
       builder: (context) {
@@ -218,28 +254,46 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
               title: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Expanded(child: Text("Update: ${task.judul}", style: const TextStyle(fontSize: 18))),
+                  Expanded(
+                    child: Text(
+                      "Update: ${task.judul}",
+                      style: const TextStyle(fontSize: 18),
+                    ),
+                  ),
                 ],
               ),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text("PIC: ${_getUserName(task.assignedTo)}", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.indigo)),
+                  Text(
+                    "PIC: ${_getUserName(task.assignedTo)}",
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.indigo,
+                    ),
+                  ),
                   const Divider(),
                   const Text("Status Pengerjaan:"),
                   DropdownButton<String>(
                     value: selectedStatus,
                     isExpanded: true,
                     items: statusOptions.map((String val) {
-                      return DropdownMenuItem(value: val, child: Text(val == 'Waiting Approval' ? 'Waiting Approval (Menunggu Validasi)' : val));
+                      return DropdownMenuItem(
+                        value: val,
+                        child: Text(
+                          val == 'Waiting Approval'
+                              ? 'Waiting Approval (Menunggu Validasi)'
+                              : val,
+                        ),
+                      );
                     }).toList(),
                     onChanged: (newVal) {
                       setDialogState(() {
-                         selectedStatus = newVal!;
-                         if(selectedStatus == 'Done') sliderValue = 100;
-                         if(selectedStatus == 'To Do') sliderValue = 0;
-                         // Jika pegawai set waiting approval, mungkin set progress 90% atau 100%? Biarkan manual.
+                        selectedStatus = newVal!;
+                        if (selectedStatus == 'Done') sliderValue = 100;
+                        if (selectedStatus == 'To Do') sliderValue = 0;
+                        // Jika pegawai set waiting approval, mungkin set progress 90% atau 100%? Biarkan manual.
                       });
                     },
                   ),
@@ -269,33 +323,49 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                         context: context,
                         builder: (ctx) => AlertDialog(
                           title: const Text("Hapus Tugas?"),
-                          content: const Text("Tugas ini akan dihapus permanen."),
+                          content: const Text(
+                            "Tugas ini akan dihapus permanen.",
+                          ),
                           actions: [
-                            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Batal")),
-                            TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Hapus", style: TextStyle(color: Colors.red))),
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, false),
+                              child: const Text("Batal"),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, true),
+                              child: const Text(
+                                "Hapus",
+                                style: TextStyle(color: Colors.red),
+                              ),
+                            ),
                           ],
                         ),
                       );
 
                       if (confirm == true) {
                         try {
-                          await supabase.from('tasks').delete().eq('id', task.id);
-                          
-                          if (mounted) {
+                          await supabase
+                              .from('tasks')
+                              .delete()
+                              .eq('id', task.id);
+
+                          if (context.mounted) {
                             Navigator.pop(context); // Tutup Dialog Utama
                             setState(() {}); // Refresh List
-                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Tugas dihapus")));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text("Tugas dihapus")),
+                            );
                           }
                         } catch (e) {
-                          print(e);
+                          debugPrint(e.toString());
                         }
                       }
                     },
                     child: const Text("Hapus"),
                   ),
-                // ---------------------------
 
-                const SizedBox(width: 20), 
+                // ---------------------------
+                const SizedBox(width: 20),
 
                 TextButton(
                   onPressed: () => Navigator.pop(context),
@@ -304,25 +374,30 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                 ElevatedButton(
                   onPressed: () async {
                     try {
-                      await supabase.from('tasks').update({
-                        'status': selectedStatus,
-                        'progress_percent': sliderValue.toInt(),
-                      }).eq('id', task.id);
+                      await supabase
+                          .from('tasks')
+                          .update({
+                            'status': selectedStatus,
+                            'progress_percent': sliderValue.toInt(),
+                          })
+                          .eq('id', task.id);
 
-                      if (mounted) {
+                      if (context.mounted) {
                         Navigator.pop(context); // Tutup dialog
                         setState(() {}); // Refresh list utama
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Status diperbarui!")));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("Status diperbarui!")),
+                        );
                       }
                     } catch (e) {
-                      print(e);
+                      debugPrint(e.toString());
                     }
                   },
                   child: const Text("Simpan"),
-                )
+                ),
               ],
             );
-          }
+          },
         );
       },
     );
@@ -331,17 +406,31 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
   Widget _buildStatusChip(String status) {
     Color color;
     switch (status) {
-      case 'Done': color = Colors.green; break;
-      case 'Doing': color = Colors.blue; break;
-      case 'Waiting Approval': color = Colors.orange; break;
-      default: color = Colors.grey;
+      case 'Done':
+        color = Colors.green;
+        break;
+      case 'Doing':
+        color = Colors.blue;
+        break;
+      case 'Waiting Approval':
+        color = Colors.orange;
+        break;
+      default:
+        color = Colors.grey;
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(color: color.withOpacity(0.2), borderRadius: BorderRadius.circular(4)),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(4),
+      ),
       child: Text(
-        status == 'Waiting Approval' ? 'Menunggu Validasi' : status, 
-        style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
+        status == 'Waiting Approval' ? 'Menunggu Validasi' : status,
+        style: TextStyle(
+          color: color,
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+        ),
         textAlign: TextAlign.center,
       ),
     );
@@ -352,119 +441,171 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Detail Proyek')),
-      body: _isLoadingUser 
+      body: _isLoadingUser
           ? const Center(child: CircularProgressIndicator())
           : Column(
-        children: [
-          // Info Proyek
-          Container(
-            padding: const EdgeInsets.all(20),
-            color: Colors.white,
-            width: double.infinity,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(widget.project.namaProyek, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.indigo)),
-                const SizedBox(height: 8),
-                Text(widget.project.deskripsi),
-                const SizedBox(height: 10),
-                Text("Deadline: ${widget.project.dueDate}", style: const TextStyle(color: Colors.red)),
-              ],
-            ),
-          ),
-          const Divider(height: 1),
-
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text("Daftar Tugas Tim", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                IconButton(onPressed: (){ setState(() {}); }, icon: const Icon(Icons.refresh))
-              ],
-            ),
-          ),
-          
-          Expanded(
-            child: FutureBuilder<List<TaskModel>>(
-              future: _fetchTasks(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-                if (!snapshot.hasData || snapshot.data!.isEmpty) return const Center(child: Text("Belum ada tugas."));
-
-                final tasks = snapshot.data!;
-
-                return ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: tasks.length,
-                  itemBuilder: (context, index) {
-                    final task = tasks[index];
-                    final assigneeName = _getUserName(task.assignedTo); // Ambil nama pegawai
-
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        // Menampilkan Inisial Nama Pegawai dalam Lingkaran
-                        leading: CircleAvatar(
-                          backgroundColor: task.assignedTo != null ? Colors.indigo : Colors.grey.shade300,
-                          child: Text(
-                            assigneeName.isNotEmpty ? assigneeName[0].toUpperCase() : "?",
-                            style: const TextStyle(color: Colors.white),
-                          ),
+                // Info Proyek
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  color: Colors.white,
+                  width: double.infinity,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.project.namaProyek,
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.indigo,
                         ),
-                        title: Text(task.judul, style: const TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const SizedBox(height: 4),
-                            // Tampilkan Nama Lengkap Pegawai
-                            Row(
-                              children: [
-                                Icon(Icons.person, size: 14, color: Colors.grey[600]),
-                                const SizedBox(width: 4),
-                                Text(
-                                  assigneeName, 
-                                  style: TextStyle(color: Colors.grey[800], fontSize: 12, fontWeight: FontWeight.bold)
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 6),
-                            LinearProgressIndicator(
-                              value: task.progress / 100,
-                              backgroundColor: Colors.grey[200],
-                              color: task.progress == 100 ? Colors.green : Colors.blue,
-                            ),
-                          ],
-                        ),
-                        trailing: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            _buildStatusChip(task.status),
-                            const SizedBox(height: 4),
-                            Text("${task.progress}%", style: const TextStyle(fontSize: 10)),
-                          ],
-                        ),
-                        // Semua bisa tap untuk update status (hak akses diatur di dalam dialog)
-                        onTap: () => _showUpdateTaskDialog(task),
                       ),
-                    );
-                  },
-                );
-              },
+                      const SizedBox(height: 8),
+                      Text(widget.project.deskripsi),
+                      const SizedBox(height: 10),
+                      Text(
+                        "Deadline: ${widget.project.dueDate}",
+                        style: const TextStyle(color: Colors.red),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        "Daftar Tugas Tim",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () {
+                          setState(() {});
+                        },
+                        icon: const Icon(Icons.refresh),
+                      ),
+                    ],
+                  ),
+                ),
+
+                Expanded(
+                  child: FutureBuilder<List<TaskModel>>(
+                    future: _fetchTasks(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                        return const Center(child: Text("Belum ada tugas."));
+                      }
+
+                      final tasks = snapshot.data!;
+
+                      return ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        itemCount: tasks.length,
+                        itemBuilder: (context, index) {
+                          final task = tasks[index];
+                          final assigneeName = _getUserName(
+                            task.assignedTo,
+                          ); // Ambil nama pegawai
+
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                              // Menampilkan Inisial Nama Pegawai dalam Lingkaran
+                              leading: CircleAvatar(
+                                backgroundColor: task.assignedTo != null
+                                    ? Colors.indigo
+                                    : Colors.grey.shade300,
+                                child: Text(
+                                  assigneeName.isNotEmpty
+                                      ? assigneeName[0].toUpperCase()
+                                      : "?",
+                                  style: const TextStyle(color: Colors.white),
+                                ),
+                              ),
+                              title: Text(
+                                task.judul,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const SizedBox(height: 4),
+                                  // Tampilkan Nama Lengkap Pegawai
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.person,
+                                        size: 14,
+                                        color: Colors.grey[600],
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        assigneeName,
+                                        style: TextStyle(
+                                          color: Colors.grey[800],
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  LinearProgressIndicator(
+                                    value: task.progress / 100,
+                                    backgroundColor: Colors.grey[200],
+                                    color: task.progress == 100
+                                        ? Colors.green
+                                        : Colors.blue,
+                                  ),
+                                ],
+                              ),
+                              trailing: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  _buildStatusChip(task.status),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    "${task.progress}%",
+                                    style: const TextStyle(fontSize: 10),
+                                  ),
+                                ],
+                              ),
+                              // Semua bisa tap untuk update status (hak akses diatur di dalam dialog)
+                              onTap: () => _showUpdateTaskDialog(task),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
-      ),
       // FAB HANYA UNTUK ADMIN
-      floatingActionButton: _currentUser?.role == 'Admin' 
-        ? FloatingActionButton.extended(
-            onPressed: _showAddTaskSheet,
-            label: const Text("Tugas Baru"),
-            icon: const Icon(Icons.add_task),
-            backgroundColor: Colors.indigo,
-          )
-        : null, 
+      floatingActionButton: _currentUser?.role == 'Admin'
+          ? FloatingActionButton.extended(
+              onPressed: _showAddTaskSheet,
+              label: const Text("Tugas Baru"),
+              icon: const Icon(Icons.add_task),
+              backgroundColor: Colors.indigo,
+            )
+          : null,
     );
   }
 }

@@ -7,8 +7,8 @@ import 'package:geolocator/geolocator.dart';
 import '../../core/constants/app_theme.dart'; // Import Theme
 import '../profile/profile_screen.dart';
 import '../attendance/permission_screen.dart';
-import '../attendance/attendance_history_screen.dart'; 
-import '../task/employee_task_list_screen.dart'; 
+import '../attendance/attendance_history_screen.dart';
+import '../task/employee_task_list_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -49,8 +49,12 @@ class _HomeScreenState extends State<HomeScreen> {
     if (user == null) return;
 
     try {
-      final userResponse = await supabase.from('users').select().eq('id', user.id).maybeSingle();
-      
+      final userResponse = await supabase
+          .from('users')
+          .select()
+          .eq('id', user.id)
+          .maybeSingle();
+
       if (userResponse != null && mounted) {
         setState(() {
           _userName = userResponse['nama'] ?? 'Pegawai';
@@ -60,14 +64,24 @@ class _HomeScreenState extends State<HomeScreen> {
       }
 
       final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
-      final attendanceRes = await supabase.from('attendances').select().eq('user_id', user.id).eq('tanggal', today).limit(1).maybeSingle();
+      final attendanceRes = await supabase
+          .from('attendances')
+          .select()
+          .eq('user_id', user.id)
+          .eq('tanggal', today)
+          .limit(1)
+          .maybeSingle();
       // UBAH QUERY: Jangan hanya 'Approved', tapi ambil yang TIDAK 'Rejected' (jadi Pending + Approved kena)
-      final letterRes = await supabase.from('letters')
+      final letterRes = await supabase
+          .from('letters')
           .select()
           .eq('user_id', user.id)
           .lte('tanggal_mulai', today)
           .gte('tanggal_selesai', today)
-          .neq('status', 'Rejected') // Logika Baru: Pending pun dianggap "Sedang Izin"
+          .neq(
+            'status',
+            'Rejected',
+          ) // Logika Baru: Pending pun dianggap "Sedang Izin"
           .limit(1)
           .maybeSingle();
 
@@ -77,37 +91,61 @@ class _HomeScreenState extends State<HomeScreen> {
             String jenis = letterRes['jenis_surat'] ?? 'Izin';
             String statusSurat = letterRes['status'] ?? 'Pending';
             // Tampilkan status spesifik jika masih Pending
-            _attendanceStatus = statusSurat == 'Pending' ? "$jenis (Menunggu)" : jenis;
-            _checkInTime = '-'; _checkOutTime = '-';
-          } 
-          else if (attendanceRes != null) {
+            _attendanceStatus = statusSurat == 'Pending'
+                ? "$jenis (Menunggu)"
+                : jenis;
+            _checkInTime = '-';
+            _checkOutTime = '-';
+          } else if (attendanceRes != null) {
             final statusDb = attendanceRes['status'];
             if (statusDb == 'Hadir') {
-              if (attendanceRes['check_in_time'] != null) _checkInTime = DateFormat('HH:mm').format(DateTime.parse(attendanceRes['check_in_time']));
+              if (attendanceRes['check_in_time'] != null) {
+                _checkInTime = DateFormat(
+                  'HH:mm',
+                ).format(DateTime.parse(attendanceRes['check_in_time']));
+              }
               if (attendanceRes['check_out_time'] != null) {
-                _checkOutTime = DateFormat('HH:mm').format(DateTime.parse(attendanceRes['check_out_time']));
+                _checkOutTime = DateFormat(
+                  'HH:mm',
+                ).format(DateTime.parse(attendanceRes['check_out_time']));
                 _attendanceStatus = 'Sudah Pulang';
               } else {
                 _attendanceStatus = 'Sudah Masuk';
               }
             } else {
-              _attendanceStatus = statusDb; _checkInTime = '-'; _checkOutTime = '-';
+              _attendanceStatus = statusDb;
+              _checkInTime = '-';
+              _checkOutTime = '-';
             }
-          } 
-          else {
-            _attendanceStatus = 'Belum Absen'; _checkInTime = '--:--'; _checkOutTime = '--:--';
+          } else {
+            _attendanceStatus = 'Belum Absen';
+            _checkInTime = '--:--';
+            _checkOutTime = '--:--';
           }
         });
       }
 
-      final taskResponse = await supabase.from('tasks').select('status').eq('assigned_to', user.id);
+      final taskResponse = await supabase
+          .from('tasks')
+          .select('status')
+          .eq('assigned_to', user.id);
       final List<dynamic> tasks = taskResponse;
-      int pending = 0; int completed = 0;
+      int pending = 0;
+      int completed = 0;
       for (var task in tasks) {
-        if (task['status'] == 'Done') completed++; else pending++;
+        if (task['status'] == 'Done') {
+          completed++;
+        } else {
+          pending++;
+        }
       }
 
-      if (mounted) setState(() { _pendingTasks = pending; _completedTasks = completed; });
+      if (mounted) {
+        setState(() {
+          _pendingTasks = pending;
+          _completedTasks = completed;
+        });
+      }
     } catch (e) {
       debugPrint("Error loading dashboard: $e");
     }
@@ -117,7 +155,11 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<Position?> _getCurrentLocation() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("GPS mati. Mohon aktifkan GPS.")));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("GPS mati. Mohon aktifkan GPS.")),
+        );
+      }
       return null;
     }
     LocationPermission permission = await Geolocator.checkPermission();
@@ -140,7 +182,8 @@ class _HomeScreenState extends State<HomeScreen> {
       if (_attendanceStatus == 'Belum Absen') {
         // --- CEK APAKAH SEDANG IZIN/SAKIT/CUTI ---
         // Jika ada surat (Pending/Approved), blokir check-in
-        final letterRes = await supabase.from('letters')
+        final letterRes = await supabase
+            .from('letters')
             .select()
             .eq('user_id', user!.id)
             .lte('tanggal_mulai', today)
@@ -150,30 +193,46 @@ class _HomeScreenState extends State<HomeScreen> {
             .maybeSingle();
 
         if (letterRes != null) {
-           final jenis = letterRes['jenis_surat'];
-           final status = letterRes['status'];
-           final msg = status == 'Pending' ? "Anda sedang mengajukan $jenis (Menunggu Persetujuan)." : "Anda sedang status $jenis.";
-           
-           if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("GAGAL: $msg Tidak bisa Absen Masuk."), backgroundColor: Colors.red));
-           await _loadDashboardData(); // Refresh UI agar status "Belum Absen" berubah jadi status izin
-           return;
+          final jenis = letterRes['jenis_surat'];
+          final status = letterRes['status'];
+          final msg = status == 'Pending'
+              ? "Anda sedang mengajukan $jenis (Menunggu Persetujuan)."
+              : "Anda sedang status $jenis.";
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text("GAGAL: $msg Tidak bisa Absen Masuk."),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          await _loadDashboardData(); // Refresh UI agar status "Belum Absen" berubah jadi status izin
+          return;
         }
         // -----------------------------------------
 
         // --- CEK DUPLIKASI DULU ---
         // Mencegah error 'duplicate key' jika user menekan tombol ganda atau data belum refresh
-        final existingCheck = await supabase.from('attendances')
+        final existingCheck = await supabase
+            .from('attendances')
             .select()
-            .eq('user_id', user!.id)
+            .eq('user_id', user.id)
             .eq('tanggal', today)
             .limit(1) // Tambahan safety
             .maybeSingle();
 
         if (existingCheck != null) {
-           // Jika ternyata data sudah ada, jangan insert lagi. Refresh saja.
-           await _loadDashboardData();
-           if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Data diperbarui (Anda sudah absen).")));
-           return;
+          // Jika ternyata data sudah ada, jangan insert lagi. Refresh saja.
+          await _loadDashboardData();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Data diperbarui (Anda sudah absen)."),
+              ),
+            );
+          }
+          return;
         }
         // --------------------------
 
@@ -181,15 +240,22 @@ class _HomeScreenState extends State<HomeScreen> {
         if (position == null) throw "Gagal mendapatkan lokasi.";
 
         await supabase.from('attendances').insert({
-          'user_id': user.id, 'tanggal': today, 'check_in_time': now.toIso8601String(),
-          'check_in_lat': position.latitude, 'check_in_long': position.longitude, 'status': 'Hadir',
+          'user_id': user.id,
+          'tanggal': today,
+          'check_in_time': now.toIso8601String(),
+          'check_in_lat': position.latitude,
+          'check_in_long': position.longitude,
+          'status': 'Hadir',
         });
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Berhasil Absen Masuk!")));
-      
-
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Berhasil Absen Masuk!")),
+          );
+        }
       } else if (_attendanceStatus == 'Sudah Masuk') {
         // --- CEK APAKAH SUDAH CHECK OUT DI TEMPAT LAIN ---
-        final checkData = await supabase.from('attendances')
+        final checkData = await supabase
+            .from('attendances')
             .select('check_out_time')
             .eq('user_id', user!.id)
             .eq('tanggal', today)
@@ -197,18 +263,36 @@ class _HomeScreenState extends State<HomeScreen> {
             .maybeSingle();
 
         if (checkData != null && checkData['check_out_time'] != null) {
-           await _loadDashboardData();
-           if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Data diperbarui (Anda sudah pulang).")));
-           return;
+          await _loadDashboardData();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Data diperbarui (Anda sudah pulang)."),
+              ),
+            );
+          }
+          return;
         }
         // ------------------------------------------------
 
-        await supabase.from('attendances').update({'check_out_time': now.toIso8601String()}).eq('user_id', user.id).eq('tanggal', today);
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Berhasil Absen Pulang!")));
+        await supabase
+            .from('attendances')
+            .update({'check_out_time': now.toIso8601String()})
+            .eq('user_id', user.id)
+            .eq('tanggal', today);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Berhasil Absen Pulang!")),
+          );
+        }
       }
-      await _loadDashboardData(); 
+      await _loadDashboardData();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Gagal: $e")));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Gagal: $e")));
+      }
     } finally {
       if (mounted) setState(() => _isLoadingAbsen = false);
     }
@@ -216,15 +300,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // --- UI WIDGETS ---
   Widget _buildAttendanceCard() {
-    Color cardColor = CodevisionTheme.primaryColor; // Default ke Biru Slate Theme
+    Color cardColor =
+        CodevisionTheme.primaryColor; // Default ke Biru Slate Theme
     IconData icon = Icons.fingerprint;
     String message = "Jangan lupa Check-in!";
     String buttonText = "ABSEN MASUK";
     bool isButtonDisabled = false;
-    bool showTime = true; 
+    bool showTime = true;
 
     if (_attendanceStatus == 'Sudah Masuk') {
-      cardColor = Colors.green.shade800; 
+      cardColor = Colors.green.shade800;
       icon = Icons.timer_outlined;
       message = "Sedang Bekerja";
       buttonText = "ABSEN PULANG";
@@ -250,13 +335,17 @@ class _HomeScreenState extends State<HomeScreen> {
         color: cardColor,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
-          BoxShadow(color: cardColor.withOpacity(0.4), blurRadius: 15, offset: const Offset(0, 8))
+          BoxShadow(
+            color: cardColor.withValues(alpha: 0.4),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
         ],
         gradient: LinearGradient(
-          colors: [cardColor, cardColor.withOpacity(0.85)],
+          colors: [cardColor, cardColor.withValues(alpha: 0.85)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-        )
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -265,15 +354,25 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Container(
                 padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(12)),
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 child: Icon(icon, color: Colors.white, size: 24),
               ),
               const SizedBox(width: 12),
-              Text(_attendanceStatus, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600)),
+              Text(
+                _attendanceStatus,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 20),
-          
+
           if (showTime) ...[
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -285,25 +384,45 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 24),
           ] else ...[
-             Padding(padding: const EdgeInsets.symmetric(vertical: 20), child: Text(message, style: const TextStyle(color: Colors.white70))),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              child: Text(
+                message,
+                style: const TextStyle(color: Colors.white70),
+              ),
+            ),
           ],
 
           SizedBox(
             width: double.infinity,
             height: 50,
             child: ElevatedButton(
-              onPressed: (isButtonDisabled || _isLoadingAbsen) ? null : _handleAttendance,
+              onPressed: (isButtonDisabled || _isLoadingAbsen)
+                  ? null
+                  : _handleAttendance,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.white,
                 foregroundColor: cardColor,
                 elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
-              child: _isLoadingAbsen 
-                ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)) 
-                : Text(buttonText, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              child: _isLoadingAbsen
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Text(
+                      buttonText,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
             ),
-          )
+          ),
         ],
       ),
     );
@@ -313,9 +432,20 @@ class _HomeScreenState extends State<HomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+        Text(
+          label,
+          style: const TextStyle(color: Colors.white54, fontSize: 12),
+        ),
         const SizedBox(height: 4),
-        Text(time, style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: 1)),
+        Text(
+          time,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1,
+          ),
+        ),
       ],
     );
   }
@@ -326,23 +456,47 @@ class _HomeScreenState extends State<HomeScreen> {
         Expanded(
           child: InkWell(
             onTap: () async {
-              await Navigator.push(context, MaterialPageRoute(builder: (context) => const EmployeeTaskListScreen()));
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const EmployeeTaskListScreen(),
+                ),
+              );
               _loadDashboardData();
             },
             child: Container(
               padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(color: Colors.orange.shade50, borderRadius: BorderRadius.circular(20)),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade50,
+                borderRadius: BorderRadius.circular(20),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
                     padding: const EdgeInsets.all(8),
-                    decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                    child: const Icon(Icons.assignment_late_outlined, color: Colors.orange),
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.assignment_late_outlined,
+                      color: Colors.orange,
+                    ),
                   ),
                   const SizedBox(height: 16),
-                  Text("$_pendingTasks Tugas", style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: CodevisionTheme.primaryColor)),
-                  const Text("Perlu Diselesaikan", style: TextStyle(color: Colors.grey, fontSize: 12)),
+                  Text(
+                    "$_pendingTasks Tugas",
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: CodevisionTheme.primaryColor,
+                    ),
+                  ),
+                  const Text(
+                    "Perlu Diselesaikan",
+                    style: TextStyle(color: Colors.grey, fontSize: 12),
+                  ),
                 ],
               ),
             ),
@@ -352,18 +506,34 @@ class _HomeScreenState extends State<HomeScreen> {
         Expanded(
           child: Container(
             padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(color: Colors.green.shade50, borderRadius: BorderRadius.circular(20)),
+            decoration: BoxDecoration(
+              color: Colors.green.shade50,
+              borderRadius: BorderRadius.circular(20),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
                   padding: const EdgeInsets.all(8),
-                  decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
                   child: const Icon(Icons.task_alt, color: Colors.green),
                 ),
                 const SizedBox(height: 16),
-                Text("$_completedTasks Selesai", style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: CodevisionTheme.primaryColor)),
-                const Text("Tugas Selesai", style: TextStyle(color: Colors.grey, fontSize: 12)),
+                Text(
+                  "$_completedTasks Selesai",
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: CodevisionTheme.primaryColor,
+                  ),
+                ),
+                const Text(
+                  "Tugas Selesai",
+                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                ),
               ],
             ),
           ),
@@ -377,31 +547,55 @@ class _HomeScreenState extends State<HomeScreen> {
       mainAxisAlignment: MainAxisAlignment.spaceAround,
       children: [
         _menuItem(
-          icon: Icons.assignment, label: "Tugas Saya", color: CodevisionTheme.primaryColor,
+          icon: Icons.assignment,
+          label: "Tugas Saya",
+          color: CodevisionTheme.primaryColor,
           onTap: () async {
-            await Navigator.push(context, MaterialPageRoute(builder: (context) => const EmployeeTaskListScreen()));
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const EmployeeTaskListScreen(),
+              ),
+            );
             _loadDashboardData();
-          }
+          },
         ),
         _menuItem(
-          icon: Icons.calendar_today_rounded, label: "Izin / Cuti", color: CodevisionTheme.accentColor,
+          icon: Icons.calendar_today_rounded,
+          label: "Izin / Cuti",
+          color: CodevisionTheme.accentColor,
           onTap: () async {
-             final result = await Navigator.push(context, MaterialPageRoute(builder: (context) => const PermissionScreen()));
-             if (result == true) _loadDashboardData();
-          }
+            final result = await Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const PermissionScreen()),
+            );
+            if (result == true) _loadDashboardData();
+          },
         ),
         _menuItem(
-          icon: Icons.history_rounded, label: "Riwayat", color: Colors.grey.shade700,
+          icon: Icons.history_rounded,
+          label: "Riwayat",
+          color: Colors.grey.shade700,
           onTap: () async {
-             await Navigator.push(context, MaterialPageRoute(builder: (context) => const AttendanceHistoryScreen()));
-             _loadDashboardData();
-          }
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const AttendanceHistoryScreen(),
+              ),
+            );
+            _loadDashboardData();
+          },
         ),
       ],
     );
   }
 
-  Widget _menuItem({required IconData icon, required String label, required Color color, required VoidCallback onTap}) {
+  Widget _menuItem({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
@@ -413,14 +607,22 @@ class _HomeScreenState extends State<HomeScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1), 
+                color: color.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: color.withOpacity(0.2))
+                border: Border.all(color: color.withValues(alpha: 0.2)),
               ),
               child: Icon(icon, color: color, size: 28),
             ),
             const SizedBox(height: 8),
-            Text(label, textAlign: TextAlign.center, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.black87)),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
           ],
         ),
       ),
@@ -429,10 +631,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final dateString = DateFormat('EEEE, d MMMM yyyy', 'id_ID').format(DateTime.now());
+    final dateString = DateFormat(
+      'EEEE, d MMMM yyyy',
+      'id_ID',
+    ).format(DateTime.now());
 
     return Scaffold(
-      backgroundColor: CodevisionTheme.backgroundColor, 
+      backgroundColor: CodevisionTheme.backgroundColor,
       body: Stack(
         children: [
           // --- SILUET LOGO BACKGROUND ---
@@ -441,14 +646,23 @@ class _HomeScreenState extends State<HomeScreen> {
             right: -50,
             child: Opacity(
               opacity: 0.05, // Transparan agar jadi siluet halus
-              child: Image.asset('assets/images/logo.png', width: 300, color: CodevisionTheme.primaryColor),
+              child: Image.asset(
+                'assets/images/logo.png',
+                width: 300,
+                color: CodevisionTheme.primaryColor,
+              ),
             ),
           ),
 
           // --- KONTEN UTAMA ---
           SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + 20, left: 20, right: 20, bottom: 20),
+            padding: EdgeInsets.only(
+              top: MediaQuery.of(context).padding.top + 20,
+              left: 20,
+              right: 20,
+              bottom: 20,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -456,61 +670,106 @@ class _HomeScreenState extends State<HomeScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                     // GANTI TEKS DENGAN LOGO KECIL & TEKS
-                     Row(
-                       children: [
-                         Image.asset('assets/images/logo.png', height: 40),
-                         const SizedBox(width: 10),
-                         Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text("Halo, $_userName", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: CodevisionTheme.primaryColor)),
-                              Text("Jabatan: $_userJabatan", style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
-                            ],
-                         ),
-                       ],
-                     ),
-                     
-                     InkWell(
-                        onTap: () async {
-                          await Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfileScreen()));
-                          _loadDashboardData();
-                        },
-                        child: CircleAvatar(
-                          radius: 20,
-                          backgroundColor: CodevisionTheme.accentColor.withOpacity(0.2),
-                          backgroundImage: _userAvatarUrl != null ? NetworkImage(_userAvatarUrl!) : null,
-                          child: _userAvatarUrl == null 
-                            ? Text(_userName.isNotEmpty ? _userName[0].toUpperCase() : "A", style: const TextStyle(color: CodevisionTheme.primaryColor, fontSize: 16, fontWeight: FontWeight.bold))
-                            : null,
+                    // GANTI TEKS DENGAN LOGO KECIL & TEKS
+                    Row(
+                      children: [
+                        Image.asset('assets/images/logo.png', height: 40),
+                        const SizedBox(width: 10),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Halo, $_userName",
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: CodevisionTheme.primaryColor,
+                              ),
+                            ),
+                            Text(
+                              "Jabatan: $_userJabatan",
+                              style: TextStyle(
+                                color: Colors.grey.shade600,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
                         ),
-                     )
+                      ],
+                    ),
+
+                    InkWell(
+                      onTap: () async {
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const ProfileScreen(),
+                          ),
+                        );
+                        _loadDashboardData();
+                      },
+                      child: CircleAvatar(
+                        radius: 20,
+                        backgroundColor: CodevisionTheme.accentColor.withValues(
+                          alpha: 0.2,
+                        ),
+                        backgroundImage: _userAvatarUrl != null
+                            ? NetworkImage(_userAvatarUrl!)
+                            : null,
+                        child: _userAvatarUrl == null
+                            ? Text(
+                                _userName.isNotEmpty
+                                    ? _userName[0].toUpperCase()
+                                    : "A",
+                                style: const TextStyle(
+                                  color: CodevisionTheme.primaryColor,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              )
+                            : null,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 24),
 
-                Text(dateString, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.grey.shade600)),
+                Text(
+                  dateString,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
                 const SizedBox(height: 12),
-                
+
                 _buildAttendanceCard(),
-                
+
                 const SizedBox(height: 32),
-                
+
                 _buildQuickMenu(),
-                
+
                 const SizedBox(height: 32),
-                
+
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text("Statistik Tugas", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
-                    Icon(Icons.bar_chart_rounded, color: Colors.grey.shade400)
+                    const Text(
+                      "Statistik Tugas",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    Icon(Icons.bar_chart_rounded, color: Colors.grey.shade400),
                   ],
                 ),
                 const SizedBox(height: 16),
                 _buildTaskStats(),
-                
-                const SizedBox(height: 40), 
+
+                const SizedBox(height: 40),
               ],
             ),
           ),

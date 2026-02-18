@@ -4,7 +4,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../auth/login_screen.dart'; // Import Login
 import 'employee/employee_list_screen.dart';
 import 'project/admin_project_list_screen.dart';
-import '../attendance/admin_attendance_screen.dart';
 import 'admin_dashboard_stats.dart'; // File baru untuk statistik
 
 class AdminHomeScreen extends StatefulWidget {
@@ -56,7 +55,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(_titles[_selectedIndex]),
-        backgroundColor: Colors.indigo.shade900, 
+        backgroundColor: Colors.indigo.shade900,
         foregroundColor: Colors.white,
         actions: [
           IconButton(onPressed: _signOut, icon: const Icon(Icons.logout)),
@@ -73,19 +72,14 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
             icon: Icon(Icons.assignment),
             label: 'Proyek',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.people),
-            label: 'Pegawai',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.email),
-            label: 'Surat',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Pegawai'),
+          BottomNavigationBarItem(icon: Icon(Icons.email), label: 'Surat'),
         ],
         currentIndex: _selectedIndex,
         selectedItemColor: Colors.indigo,
         unselectedItemColor: Colors.grey,
-        type: BottomNavigationBarType.fixed, // Agar > 3 item tetap terlihat labelnya
+        type: BottomNavigationBarType
+            .fixed, // Agar > 3 item tetap terlihat labelnya
         onTap: _onItemTapped,
       ),
     );

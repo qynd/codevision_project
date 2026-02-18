@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
@@ -8,12 +7,12 @@ class AdminOutgoingLetterScreen extends StatefulWidget {
   const AdminOutgoingLetterScreen({super.key});
 
   @override
-  State<AdminOutgoingLetterScreen> createState() => _AdminOutgoingLetterScreenState();
+  State<AdminOutgoingLetterScreen> createState() =>
+      _AdminOutgoingLetterScreenState();
 }
 
 class _AdminOutgoingLetterScreenState extends State<AdminOutgoingLetterScreen> {
   final supabase = Supabase.instance.client;
-  bool _isLoading = false;
 
   Future<List<Map<String, dynamic>>> _fetchLetters() async {
     final response = await supabase
@@ -27,9 +26,17 @@ class _AdminOutgoingLetterScreenState extends State<AdminOutgoingLetterScreen> {
     try {
       await supabase.from('outgoing_letters').delete().eq('id', id);
       setState(() {});
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Surat dihapus")));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("Surat dihapus")));
+      }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Gagal: $e")));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Gagal: $e")));
+      }
     }
   }
 
@@ -41,12 +48,14 @@ class _AdminOutgoingLetterScreenState extends State<AdminOutgoingLetterScreen> {
       final fileName = 'out_${DateTime.now().millisecondsSinceEpoch}.$fileExt';
       final filePath = 'outgoing/$fileName';
 
-      await supabase.storage.from('letters').uploadBinary(
+      await supabase.storage
+          .from('letters')
+          .uploadBinary(
             filePath,
             bytes,
             fileOptions: FileOptions(contentType: imageFile.mimeType),
           );
-      
+
       final imageUrl = supabase.storage.from('letters').getPublicUrl(filePath);
       return imageUrl;
     } catch (e) {
@@ -57,75 +66,111 @@ class _AdminOutgoingLetterScreenState extends State<AdminOutgoingLetterScreen> {
 
   // --- FORM DIALOG ---
   void _showFormDialog({Map<String, dynamic>? letter}) {
-    final _formKey = GlobalKey<FormState>();
-    final _noController = TextEditingController(text: letter?['nomor_surat'] ?? '');
-    final _tujuanController = TextEditingController(text: letter?['tujuan_surat'] ?? '');
-    final _perihalController = TextEditingController(text: letter?['perihal'] ?? '');
-    final _tglSuratController = TextEditingController(text: letter?['tanggal_surat'] ?? '');
+    final formKey = GlobalKey<FormState>();
+    final noController = TextEditingController(
+      text: letter?['nomor_surat'] ?? '',
+    );
+    final tujuanController = TextEditingController(
+      text: letter?['tujuan_surat'] ?? '',
+    );
+    final perihalController = TextEditingController(
+      text: letter?['perihal'] ?? '',
+    );
+    final tglSuratController = TextEditingController(
+      text: letter?['tanggal_surat'] ?? '',
+    );
 
-    XFile? _pickedImage; 
-    String? _existingImageUrl = letter?['file_url'];
-    bool _isUploading = false;
+    XFile? pickedImage;
+    String? existingImageUrl = letter?['file_url'];
+    bool isUploading = false;
 
     showDialog(
-      context: context, 
+      context: context,
       barrierDismissible: false,
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: Text(letter == null ? "Tambah Surat Keluar" : "Edit Surat Keluar"),
+              title: Text(
+                letter == null ? "Tambah Surat Keluar" : "Edit Surat Keluar",
+              ),
               content: SingleChildScrollView(
                 child: Form(
-                  key: _formKey,
+                  key: formKey,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       TextFormField(
-                        controller: _noController,
-                        decoration: const InputDecoration(labelText: "Nomor Surat", border: OutlineInputBorder()),
+                        controller: noController,
+                        decoration: const InputDecoration(
+                          labelText: "Nomor Surat",
+                          border: OutlineInputBorder(),
+                        ),
                         validator: (val) => val!.isEmpty ? 'Wajib diisi' : null,
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
-                        controller: _tujuanController,
-                        decoration: const InputDecoration(labelText: "Tujuan Surat", border: OutlineInputBorder()),
+                        controller: tujuanController,
+                        decoration: const InputDecoration(
+                          labelText: "Tujuan Surat",
+                          border: OutlineInputBorder(),
+                        ),
                         validator: (val) => val!.isEmpty ? 'Wajib diisi' : null,
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
-                        controller: _perihalController,
-                        decoration: const InputDecoration(labelText: "Perihal", border: OutlineInputBorder()),
+                        controller: perihalController,
+                        decoration: const InputDecoration(
+                          labelText: "Perihal",
+                          border: OutlineInputBorder(),
+                        ),
                         validator: (val) => val!.isEmpty ? 'Wajib diisi' : null,
                       ),
                       const SizedBox(height: 12),
-                      
+
                       InkWell(
                         onTap: () async {
                           DateTime? picked = await showDatePicker(
-                            context: context, initialDate: DateTime.now(), 
-                            firstDate: DateTime(2000), lastDate: DateTime(2050));
-                          if(picked != null) _tglSuratController.text = DateFormat('yyyy-MM-dd').format(picked);
+                            context: context,
+                            initialDate: DateTime.now(),
+                            firstDate: DateTime(2000),
+                            lastDate: DateTime(2050),
+                          );
+                          if (picked != null) {
+                            tglSuratController.text = DateFormat(
+                              'yyyy-MM-dd',
+                            ).format(picked);
+                          }
                         },
                         child: TextFormField(
-                          controller: _tglSuratController,
-                          decoration: const InputDecoration(labelText: "Tanggal Surat", suffixIcon: Icon(Icons.calendar_today), border: OutlineInputBorder()),
+                          controller: tglSuratController,
+                          decoration: const InputDecoration(
+                            labelText: "Tanggal Surat",
+                            suffixIcon: Icon(Icons.calendar_today),
+                            border: OutlineInputBorder(),
+                          ),
                           enabled: false,
-                          validator: (val) => val!.isEmpty ? 'Wajib diisi' : null,
+                          validator: (val) =>
+                              val!.isEmpty ? 'Wajib diisi' : null,
                         ),
                       ),
                       const SizedBox(height: 20),
 
                       // UPLOAD FOTO AREA
-                      const Text("Lampiran Foto Surat (Opsional)", style: TextStyle(fontWeight: FontWeight.bold)),
+                      const Text(
+                        "Lampiran Foto Surat (Opsional)",
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                       const SizedBox(height: 8),
                       GestureDetector(
                         onTap: () async {
-                           final ImagePicker picker = ImagePicker();
-                           final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-                           if(image != null) {
-                             setDialogState(() => _pickedImage = image);
-                           }
+                          final ImagePicker picker = ImagePicker();
+                          final XFile? image = await picker.pickImage(
+                            source: ImageSource.gallery,
+                          );
+                          if (image != null) {
+                            setDialogState(() => pickedImage = image);
+                          }
                         },
                         child: Container(
                           height: 150,
@@ -135,75 +180,105 @@ class _AdminOutgoingLetterScreenState extends State<AdminOutgoingLetterScreen> {
                             borderRadius: BorderRadius.circular(8),
                             color: Colors.grey.shade100,
                           ),
-                          child: _pickedImage != null 
-                            ? Image.network(_pickedImage!.path, fit: BoxFit.cover)
-                            : (_existingImageUrl != null 
-                                ? Image.network(_existingImageUrl!, fit: BoxFit.cover)
-                                : const Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [Icon(Icons.add_a_photo, size: 40, color: Colors.grey), Text("Tap untuk upload")],
-                                  )
-                              ),
+                          child: pickedImage != null
+                              ? Image.network(
+                                  pickedImage!.path,
+                                  fit: BoxFit.cover,
+                                )
+                              : (existingImageUrl != null
+                                    ? Image.network(
+                                        existingImageUrl,
+                                        fit: BoxFit.cover,
+                                      )
+                                    : const Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.add_a_photo,
+                                            size: 40,
+                                            color: Colors.grey,
+                                          ),
+                                          Text("Tap untuk upload"),
+                                        ],
+                                      )),
                         ),
                       ),
-                      if (_pickedImage != null)
+                      if (pickedImage != null)
                         TextButton.icon(
-                          onPressed: () => setDialogState(() => _pickedImage = null), 
+                          onPressed: () =>
+                              setDialogState(() => pickedImage = null),
                           icon: const Icon(Icons.close, color: Colors.red),
-                          label: const Text("Hapus Foto")
-                        )
+                          label: const Text("Hapus Foto"),
+                        ),
                     ],
                   ),
                 ),
               ),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(context), child: const Text("Batal")),
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("Batal"),
+                ),
                 ElevatedButton(
-                  onPressed: _isUploading ? null : () async {
-                    if (_formKey.currentState!.validate()) {
-                      setDialogState(() => _isUploading = true);
-                      
-                      try {
-                        String? fileUrl = _existingImageUrl;
-                        
-                        // Upload Image jika ada yang baru dipilih
-                        if (_pickedImage != null) {
-                           final url = await _uploadImage(_pickedImage!);
-                           if (url != null) fileUrl = url;
-                        }
+                  onPressed: isUploading
+                      ? null
+                      : () async {
+                          if (formKey.currentState!.validate()) {
+                            setDialogState(() => isUploading = true);
 
-                        final data = {
-                          'nomor_surat': _noController.text,
-                          'tujuan_surat': _tujuanController.text,
-                          'perihal': _perihalController.text,
-                          'tanggal_surat': _tglSuratController.text,
-                          'file_url': fileUrl,
-                        };
-                        
-                        if (letter == null) {
-                          await supabase.from('outgoing_letters').insert(data);
-                        } else {
-                          await supabase.from('outgoing_letters').update(data).eq('id', letter['id']);
-                        }
-                        
-                        if (mounted) {
-                          Navigator.pop(context);
-                          setState(() {});
-                        }
-                      } catch (e) {
-                         debugPrint(e.toString());
-                      } finally {
-                        setDialogState(() => _isUploading = false);
-                      }
-                    }
-                  }, 
-                  child: _isUploading ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator()) : const Text("Simpan")
-                )
+                            try {
+                              String? fileUrl = existingImageUrl;
+
+                              // Upload Image jika ada yang baru dipilih
+                              if (pickedImage != null) {
+                                final url = await _uploadImage(pickedImage!);
+                                if (url != null) fileUrl = url;
+                              }
+
+                              final data = {
+                                'nomor_surat': noController.text,
+                                'tujuan_surat': tujuanController.text,
+                                'perihal': perihalController.text,
+                                'tanggal_surat': tglSuratController.text,
+                                'file_url': fileUrl,
+                              };
+
+                              if (letter == null) {
+                                await supabase
+                                    .from('outgoing_letters')
+                                    .insert(data);
+                              } else {
+                                await supabase
+                                    .from('outgoing_letters')
+                                    .update(data)
+                                    .eq('id', letter['id']);
+                              }
+
+                              if (context.mounted) {
+                                Navigator.pop(context);
+                                setState(() {});
+                              }
+                            } catch (e) {
+                              debugPrint(e.toString());
+                            } finally {
+                              setDialogState(() => isUploading = false);
+                            }
+                          }
+                        },
+                  child: isUploading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(),
+                        )
+                      : const Text("Simpan"),
+                ),
               ],
             );
-          }
+          },
         );
-      }
+      },
     );
   }
 
@@ -219,27 +294,46 @@ class _AdminOutgoingLetterScreenState extends State<AdminOutgoingLetterScreen> {
             children: [
               if (letter['file_url'] != null)
                 ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(16),
+                  ),
                   child: Image.network(
                     letter['file_url'],
                     height: 250,
                     fit: BoxFit.cover,
-                    errorBuilder: (ctx, err, stack) => Container(height: 150, color: Colors.grey.shade200, child: const Center(child: Icon(Icons.broken_image))),
+                    errorBuilder: (ctx, err, stack) => Container(
+                      height: 150,
+                      color: Colors.grey.shade200,
+                      child: const Center(child: Icon(Icons.broken_image)),
+                    ),
                   ),
                 )
-              else 
+              else
                 Container(
-                  height: 100, 
-                  decoration: BoxDecoration(color: Colors.orange.shade50, borderRadius: const BorderRadius.vertical(top: Radius.circular(16))),
-                  child: const Center(child: Icon(Icons.outbox, size: 50, color: Colors.orange)),
+                  height: 100,
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade50,
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(16),
+                    ),
+                  ),
+                  child: const Center(
+                    child: Icon(Icons.outbox, size: 50, color: Colors.orange),
+                  ),
                 ),
-              
+
               Padding(
                 padding: const EdgeInsets.all(20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(letter['perihal'] ?? 'Tanpa Perihal', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                    Text(
+                      letter['perihal'] ?? 'Tanpa Perihal',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     Divider(color: Colors.grey.shade300),
                     const SizedBox(height: 8),
@@ -255,9 +349,12 @@ class _AdminOutgoingLetterScreenState extends State<AdminOutgoingLetterScreen> {
                   onPressed: () => Navigator.pop(context),
                   icon: const Icon(Icons.close),
                   label: const Text("Tutup"),
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                    foregroundColor: Colors.white,
+                  ),
                 ),
-              )
+              ),
             ],
           ),
         ),
@@ -271,8 +368,25 @@ class _AdminOutgoingLetterScreenState extends State<AdminOutgoingLetterScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(width: 120, child: Text(label, style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.w500))),
-          Expanded(child: Text(value ?? '-', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black87))),
+          SizedBox(
+            width: 120,
+            child: Text(
+              label,
+              style: TextStyle(
+                color: Colors.grey.shade600,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value ?? '-',
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -291,8 +405,12 @@ class _AdminOutgoingLetterScreenState extends State<AdminOutgoingLetterScreen> {
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: _fetchLetters(),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-          if (!snapshot.hasData || snapshot.data!.isEmpty) return const Center(child: Text("Belum ada surat keluar."));
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return const Center(child: Text("Belum ada surat keluar."));
+          }
 
           final letters = snapshot.data!;
           return ListView.separated(
@@ -303,7 +421,9 @@ class _AdminOutgoingLetterScreenState extends State<AdminOutgoingLetterScreen> {
               final item = letters[index];
               return Card(
                 elevation: 3,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(12),
                   onTap: () => _showDetail(item),
@@ -313,50 +433,93 @@ class _AdminOutgoingLetterScreenState extends State<AdminOutgoingLetterScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Container(
-                          width: 60, height: 60,
+                          width: 60,
+                          height: 60,
                           decoration: BoxDecoration(
                             color: Colors.orange.shade50,
                             borderRadius: BorderRadius.circular(8),
-                            image: item['file_url'] != null ? DecorationImage(image: NetworkImage(item['file_url']), fit: BoxFit.cover) : null,
+                            image: item['file_url'] != null
+                                ? DecorationImage(
+                                    image: NetworkImage(item['file_url']),
+                                    fit: BoxFit.cover,
+                                  )
+                                : null,
                           ),
-                          child: item['file_url'] == null ? const Icon(Icons.image_not_supported, color: Colors.orange) : null,
+                          child: item['file_url'] == null
+                              ? const Icon(
+                                  Icons.image_not_supported,
+                                  color: Colors.orange,
+                                )
+                              : null,
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(item['perihal'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16), maxLines: 2, overflow: TextOverflow.ellipsis),
+                              Text(
+                                item['perihal'],
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                               const SizedBox(height: 4),
-                              Text("Tujuan: ${item['tujuan_surat']}", style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+                              Text(
+                                "Tujuan: ${item['tujuan_surat']}",
+                                style: TextStyle(
+                                  color: Colors.grey.shade600,
+                                  fontSize: 13,
+                                ),
+                              ),
                               const SizedBox(height: 4),
                               Row(
                                 children: [
-                                  Icon(Icons.calendar_today, size: 14, color: Colors.grey.shade600),
+                                  Icon(
+                                    Icons.calendar_today,
+                                    size: 14,
+                                    color: Colors.grey.shade600,
+                                  ),
                                   const SizedBox(width: 4),
-                                  Text(item['tanggal_surat'] ?? '-', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                                  Text(
+                                    item['tanggal_surat'] ?? '-',
+                                    style: TextStyle(
+                                      color: Colors.grey.shade600,
+                                      fontSize: 12,
+                                    ),
+                                  ),
                                 ],
-                              )
+                              ),
                             ],
                           ),
                         ),
                         Column(
                           children: [
                             IconButton(
-                              icon: const Icon(Icons.edit, color: Colors.blue, size: 20),
+                              icon: const Icon(
+                                Icons.edit,
+                                color: Colors.blue,
+                                size: 20,
+                              ),
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(),
                               onPressed: () => _showFormDialog(letter: item),
                             ),
                             const SizedBox(height: 12),
                             IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red, size: 20),
+                              icon: const Icon(
+                                Icons.delete,
+                                color: Colors.red,
+                                size: 20,
+                              ),
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(),
                               onPressed: () => _deleteLetter(item['id']),
                             ),
                           ],
-                        )
+                        ),
                       ],
                     ),
                   ),

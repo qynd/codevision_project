@@ -11,9 +11,9 @@ class AddLetterScreen extends StatefulWidget {
   final LetterModel? letterToEdit; // TAMBAHAN: Data surat jika mode Edit
 
   const AddLetterScreen({
-    super.key, 
-    required this.jenisSurat, 
-    this.letterToEdit // Boleh null (artinya mode Tambah Baru)
+    super.key,
+    required this.jenisSurat,
+    this.letterToEdit, // Boleh null (artinya mode Tambah Baru)
   });
 
   @override
@@ -26,10 +26,10 @@ class _AddLetterScreenState extends State<AddLetterScreen> {
   final _perihalController = TextEditingController();
   final _pihakController = TextEditingController();
   final _dateController = TextEditingController();
-  
+
   final supabase = Supabase.instance.client;
-  
-  XFile? _selectedImage; 
+
+  XFile? _selectedImage;
   bool _isUploading = false;
 
   @override
@@ -54,12 +54,14 @@ class _AddLetterScreenState extends State<AddLetterScreen> {
 
   Future<void> _submitData() async {
     if (!_formKey.currentState!.validate()) return;
-    
+
     // Validasi Foto:
     // Jika Mode Tambah: Wajib ada _selectedImage
     // Jika Mode Edit: Boleh kosong (artinya pakai foto lama)
     if (widget.letterToEdit == null && _selectedImage == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Harap lampirkan foto surat")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Harap lampirkan foto surat")),
+      );
       return;
     }
 
@@ -72,14 +74,20 @@ class _AddLetterScreenState extends State<AddLetterScreen> {
       if (_selectedImage != null) {
         // Upload Foto Baru
         final bytes = await _selectedImage!.readAsBytes();
-        final String fileExt = _selectedImage!.name.split('.').last; 
+        final String fileExt = _selectedImage!.name.split('.').last;
         final fileName = '${DateTime.now().millisecondsSinceEpoch}.$fileExt';
         final path = 'uploads/$fileName';
 
-        await supabase.storage.from('letters').uploadBinary(
-          path, bytes,
-          fileOptions: FileOptions(contentType: 'image/$fileExt', upsert: false),
-        );
+        await supabase.storage
+            .from('letters')
+            .uploadBinary(
+              path,
+              bytes,
+              fileOptions: FileOptions(
+                contentType: 'image/$fileExt',
+                upsert: false,
+              ),
+            );
         imageUrl = supabase.storage.from('letters').getPublicUrl(path);
       } else {
         // Tidak upload baru, pakai URL lama
@@ -87,9 +95,13 @@ class _AddLetterScreenState extends State<AddLetterScreen> {
       }
 
       // 2. Siapkan Data
-      final tableName = widget.jenisSurat == 'Masuk' ? 'incoming_letters' : 'outgoing_letters';
-      final pihakColumn = widget.jenisSurat == 'Masuk' ? 'asal_surat' : 'tujuan_surat';
-      
+      final tableName = widget.jenisSurat == 'Masuk'
+          ? 'incoming_letters'
+          : 'outgoing_letters';
+      final pihakColumn = widget.jenisSurat == 'Masuk'
+          ? 'asal_surat'
+          : 'tujuan_surat';
+
       final dataToInsert = {
         'nomor_surat': _nomorController.text,
         'perihal': _perihalController.text,
@@ -108,16 +120,30 @@ class _AddLetterScreenState extends State<AddLetterScreen> {
         await supabase.from(tableName).insert(dataToInsert);
       } else {
         // Mode Edit (Update berdasarkan ID)
-        await supabase.from(tableName).update(dataToInsert).eq('id', widget.letterToEdit!.id);
+        await supabase
+            .from(tableName)
+            .update(dataToInsert)
+            .eq('id', widget.letterToEdit!.id);
       }
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(widget.letterToEdit == null ? "Berhasil disimpan" : "Berhasil diupdate")));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              widget.letterToEdit == null
+                  ? "Berhasil disimpan"
+                  : "Berhasil diupdate",
+            ),
+          ),
+        );
         Navigator.pop(context, true); // Kembali dengan sukses
       }
-
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Error: $e")));
+      }
     } finally {
       if (mounted) setState(() => _isUploading = false);
     }
@@ -125,7 +151,9 @@ class _AddLetterScreenState extends State<AddLetterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final labelPihak = widget.jenisSurat == 'Masuk' ? "Pengirim (Instansi Asal)" : "Tujuan (Penerima)";
+    final labelPihak = widget.jenisSurat == 'Masuk'
+        ? "Pengirim (Instansi Asal)"
+        : "Tujuan (Penerima)";
     final isEditMode = widget.letterToEdit != null;
 
     return Scaffold(
@@ -139,43 +167,62 @@ class _AddLetterScreenState extends State<AddLetterScreen> {
             children: [
               TextFormField(
                 controller: _nomorController,
-                decoration: const InputDecoration(labelText: 'Nomor Surat', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  labelText: 'Nomor Surat',
+                  border: OutlineInputBorder(),
+                ),
                 validator: (val) => val!.isEmpty ? 'Wajib diisi' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _perihalController,
-                decoration: const InputDecoration(labelText: 'Perihal / Subjek', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  labelText: 'Perihal / Subjek',
+                  border: OutlineInputBorder(),
+                ),
                 validator: (val) => val!.isEmpty ? 'Wajib diisi' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _pihakController,
-                decoration: InputDecoration(labelText: labelPihak, border: const OutlineInputBorder()),
+                decoration: InputDecoration(
+                  labelText: labelPihak,
+                  border: const OutlineInputBorder(),
+                ),
                 validator: (val) => val!.isEmpty ? 'Wajib diisi' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _dateController,
-                decoration: const InputDecoration(labelText: 'Tanggal Surat', border: OutlineInputBorder(), suffixIcon: Icon(Icons.calendar_today)),
+                decoration: const InputDecoration(
+                  labelText: 'Tanggal Surat',
+                  border: OutlineInputBorder(),
+                  suffixIcon: Icon(Icons.calendar_today),
+                ),
                 readOnly: true,
                 onTap: () async {
                   DateTime? pickedDate = await showDatePicker(
                     context: context,
                     initialDate: DateTime.now(),
-                    firstDate: DateTime(2000), lastDate: DateTime(2100)
+                    firstDate: DateTime(2000),
+                    lastDate: DateTime(2100),
                   );
                   if (pickedDate != null) {
-                     _dateController.text = DateFormat('yyyy-MM-dd').format(pickedDate);
+                    _dateController.text = DateFormat(
+                      'yyyy-MM-dd',
+                    ).format(pickedDate);
                   }
                 },
                 validator: (val) => val!.isEmpty ? 'Wajib diisi' : null,
               ),
               const SizedBox(height: 20),
 
-              const Text("Foto Fisik Surat:", style: TextStyle(fontWeight: FontWeight.bold)),
+              const Text(
+                "Foto Fisik Surat:",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 10),
-              
+
               GestureDetector(
                 onTap: _pickImage,
                 child: Container(
@@ -189,23 +236,36 @@ class _AddLetterScreenState extends State<AddLetterScreen> {
                   child: _selectedImage != null
                       ? ClipRRect(
                           borderRadius: BorderRadius.circular(10),
-                          child: kIsWeb 
-                             ? Image.network(_selectedImage!.path, fit: BoxFit.contain)
-                             : Image.file(File(_selectedImage!.path), fit: BoxFit.contain),
+                          child: kIsWeb
+                              ? Image.network(
+                                  _selectedImage!.path,
+                                  fit: BoxFit.contain,
+                                )
+                              : Image.file(
+                                  File(_selectedImage!.path),
+                                  fit: BoxFit.contain,
+                                ),
                         )
-                      : (widget.letterToEdit?.fileUrl != null) 
-                          // Jika mode Edit dan belum ganti foto, tampilkan foto lama dari URL
-                          ? ClipRRect(
-                              borderRadius: BorderRadius.circular(10),
-                              child: Image.network(widget.letterToEdit!.fileUrl!, fit: BoxFit.contain),
-                            )
-                          : const Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.camera_alt, size: 40, color: Colors.grey),
-                                Text("Ketuk untuk ganti/upload foto"),
-                              ],
+                      : (widget.letterToEdit?.fileUrl != null)
+                      // Jika mode Edit dan belum ganti foto, tampilkan foto lama dari URL
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: Image.network(
+                            widget.letterToEdit!.fileUrl!,
+                            fit: BoxFit.contain,
+                          ),
+                        )
+                      : const Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.camera_alt,
+                              size: 40,
+                              color: Colors.grey,
                             ),
+                            Text("Ketuk untuk ganti/upload foto"),
+                          ],
+                        ),
                 ),
               ),
               const SizedBox(height: 30),
@@ -215,12 +275,15 @@ class _AddLetterScreenState extends State<AddLetterScreen> {
                 height: 50,
                 child: ElevatedButton(
                   onPressed: _isUploading ? null : _submitData,
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo, foregroundColor: Colors.white),
-                  child: _isUploading 
-                    ? const CircularProgressIndicator(color: Colors.white) 
-                    : Text(isEditMode ? "UPDATE SURAT" : "SIMPAN SURAT"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.indigo,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: _isUploading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : Text(isEditMode ? "UPDATE SURAT" : "SIMPAN SURAT"),
                 ),
-              )
+              ),
             ],
           ),
         ),
