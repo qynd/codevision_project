@@ -34,6 +34,9 @@ class _HomeScreenState extends State<HomeScreen> {
   // Data Tugas
   int _pendingTasks = 0;
   int _completedTasks = 0;
+  
+  // Data Kinerja
+  int _currentMonthPoints = 0;
 
   @override
   void initState() {
@@ -140,10 +143,20 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       }
 
+      final now = DateTime.now();
+      final perfRes = await supabase
+          .from('employee_performances')
+          .select('total_poin')
+          .eq('user_id', user.id)
+          .eq('bulan', now.month)
+          .eq('tahun', now.year)
+          .maybeSingle();
+
       if (mounted) {
         setState(() {
           _pendingTasks = pending;
           _completedTasks = completed;
+          _currentMonthPoints = perfRes != null ? (perfRes['total_poin'] ?? 0) : 0;
         });
       }
     } catch (e) {
@@ -542,6 +555,61 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildPerformanceBanner() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.amber.shade50,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.amber.shade200),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.star_rounded, color: Colors.amber.shade700),
+              ),
+              const SizedBox(width: 16),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Total Poin Kinerja",
+                    style: TextStyle(
+                      color: Colors.amber.shade900,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const Text(
+                    "Bulan Ini",
+                    style: TextStyle(color: Colors.grey, fontSize: 12),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          Text(
+            "$_currentMonthPoints",
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: Colors.amber.shade800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildQuickMenu() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -768,6 +836,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(height: 16),
                 _buildTaskStats(),
+
+                const SizedBox(height: 16),
+                _buildPerformanceBanner(),
 
                 const SizedBox(height: 40),
               ],

@@ -158,8 +158,16 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
                     child: Text("Pegawai Biasa"),
                   ),
                   DropdownMenuItem(
-                    value: 'admin',
-                    child: Text("Admin (Full Akses)"),
+                    value: 'hrd_ga',
+                    child: Text("HRD / GA"),
+                  ),
+                  DropdownMenuItem(
+                    value: 'manajer',
+                    child: Text("Manajer"),
+                  ),
+                  DropdownMenuItem(
+                    value: 'direktur',
+                    child: Text("Direktur"),
                   ),
                 ],
                 onChanged: (val) => setState(() => _selectedRole = val!),

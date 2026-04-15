@@ -7,6 +7,9 @@ import '../../../data/models/project_model.dart';
 import '../../../data/models/task_model.dart';
 import '../../../data/models/attendance_model.dart';
 import '../../../data/models/letter_model.dart';
+import '../../../data/models/expense_model.dart';
+import '../../../data/models/performance_model.dart';
+import '../../../data/models/leave_model.dart';
 import 'admin_report_selection_screen.dart'; // For Enum
 
 class ReportPreviewScreen extends StatefulWidget {
@@ -32,6 +35,12 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
   DateTime? endDate;
   String? selectedStatus;
 
+  // Filters for Performance
+  int? startMonth = DateTime.now().month;
+  int? endMonth = DateTime.now().month;
+  int? selectedYear = DateTime.now().year;
+  final List<String> _monthNames = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
   // Data
   List<dynamic> _data = [];
   bool _isLoading = false;
@@ -47,13 +56,7 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // 1. Special Handling for Attendance (Merge with Letters)
-      if (widget.reportType == ReportType.attendance) {
-        await _fetchAttendanceData();
-      } else {
-        // Standard handling for other reports
-        await _fetchStandardData();
-      }
+      await _fetchStandardData();
     } catch (e) {
       debugPrint("Error fetching data: $e");
       if (mounted) {
@@ -64,101 +67,6 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
     } finally {
       setState(() => _isLoading = false);
     }
-  }
-
-  Future<void> _fetchAttendanceData() async {
-    List<Map<String, dynamic>> finalData = [];
-    bool fetchAttendance = true;
-    bool fetchLetters = true;
-
-    // Determine what to fetch based on status filter
-    if (selectedStatus != null && selectedStatus != 'Semua') {
-      if (selectedStatus == 'Hadir') {
-        fetchLetters = false;
-      } else if (['Izin', 'Sakit', 'Cuti'].contains(selectedStatus)) {
-        fetchAttendance = false;
-      }
-    }
-
-    // A. FETCH ATTENDANCE (Hadir)
-    if (fetchAttendance) {
-      var query = supabase
-          .from('attendances')
-          .select('*, users(nama, nip, jabatan)');
-
-      // Date Filter
-      if (startDate != null && endDate != null) {
-        query = query
-            .gte('tanggal', startDate!.toIso8601String())
-            .lte(
-              'tanggal',
-              endDate!.add(const Duration(days: 1)).toIso8601String(),
-            );
-      }
-
-      // We don't filter 'status' column on attendances table for 'Izin/Sakit'
-      // because attendances table usually only stores 'Hadir' or 'Telat'.
-      // But if user selected 'Hadir', we might want to ensure we don't accidentally get other things if they exist.
-      // For now, assume attendances table = Present.
-
-      final res = await query;
-      finalData.addAll(List<Map<String, dynamic>>.from(res));
-    }
-
-    // B. FETCH LETTERS (Izin/Sakit/Cuti)
-    if (fetchLetters) {
-      var query = supabase
-          .from('letters')
-          .select('*, users(nama, nip, jabatan)');
-
-      // Date Filter (Use tanggal_mulai)
-      if (startDate != null && endDate != null) {
-        query = query
-            .gte('tanggal_mulai', startDate!.toIso8601String())
-            .lte(
-              'tanggal_mulai',
-              endDate!.add(const Duration(days: 1)).toIso8601String(),
-            );
-      }
-
-      // Status Filter
-      if (selectedStatus != null &&
-          selectedStatus != 'Semua' &&
-          selectedStatus != 'Hadir') {
-        query = query.eq('jenis_surat', selectedStatus!);
-      } else {
-        // If 'Semua', we only want Izin/Sakit/Cuti letters, usually all letters are these types.
-        // But maybe exclude 'Resign' if that exists? assuming letters are only permission types for now.
-      }
-
-      final res = await query;
-      final List<dynamic> letters = res;
-
-      // Normalize Letters to match Attendance Structure
-      for (var letter in letters) {
-        finalData.add({
-          'id': letter['id'],
-          'users': letter['users'], // Keep user object
-          'tanggal': letter['tanggal_mulai'], // Map tanggal_mulai to tanggal
-          'check_in_time': null, // No check in
-          'check_out_time': null, // No check out
-          'status': letter['jenis_surat'], // Map jenis_surat to status
-          'keterangan': letter['keterangan'],
-          // Add extra fields if needed
-        });
-      }
-    }
-
-    // Sort by Date
-    finalData.sort((a, b) {
-      final dateA = a['tanggal'] ?? '';
-      final dateB = b['tanggal'] ?? '';
-      return dateB.compareTo(dateA); // Descending
-    });
-
-    setState(() {
-      _data = finalData;
-    });
   }
 
   Future<void> _fetchStandardData() async {
@@ -174,39 +82,91 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
             .from('tasks')
             .select('*, users:users!tasks_assigned_to_fkey(nama)');
         break;
+      case ReportType.attendance:
+        query = supabase.from('attendances').select('*, users(nama, nip, jabatan)');
+        break;
+      case ReportType.leave:
+        query = supabase.from('letters').select('*, users!letters_user_id_fkey(nama, nip, jabatan)').inFilter('jenis_surat', ['Izin', 'Sakit', 'Cuti']);
+        break;
       case ReportType.incomingLetter:
         query = supabase.from('incoming_letters').select();
         break;
       case ReportType.outgoingLetter:
         query = supabase.from('outgoing_letters').select();
         break;
-      default:
-        return;
+      case ReportType.operationalExpense:
+        query = supabase.from('operational_expenses').select('*, users!fk_expense_user(nama), projects(nama_proyek), approver:approver_id(nama)');
+        break;
+      case ReportType.performance:
+        query = supabase.from('employee_performances').select('*, users!fk_performance_user(nama)');
+        break;
     }
 
     // 2. Apply Filters
-    if (startDate != null && endDate != null) {
-      String dateColumn = 'created_at';
-      if (widget.reportType == ReportType.incomingLetter ||
-          widget.reportType == ReportType.outgoingLetter) {
-        dateColumn = 'tanggal_surat';
+    if (widget.reportType == ReportType.performance) {
+      if (startMonth != null && endMonth != null) {
+        query = query.gte('bulan', startMonth!).lte('bulan', endMonth!);
       }
-      query = query
-          .gte(dateColumn, startDate!.toIso8601String())
-          .lte(
-            dateColumn,
-            endDate!.add(const Duration(days: 1)).toIso8601String(),
-          );
-    }
+      if (selectedYear != null) {
+        query = query.eq('tahun', selectedYear!);
+      }
+      query = query.order('total_poin', ascending: false);
+    } else {
+      if (startDate != null && endDate != null) {
+        String dateColumn = 'created_at';
+        if (widget.reportType == ReportType.incomingLetter ||
+            widget.reportType == ReportType.outgoingLetter) {
+          dateColumn = 'tanggal_surat';
+        } else if (widget.reportType == ReportType.operationalExpense) {
+          dateColumn = 'tanggal_pengajuan';
+        } else if (widget.reportType == ReportType.attendance) {
+          dateColumn = 'tanggal';
+        } else if (widget.reportType == ReportType.leave) {
+          dateColumn = 'tanggal_mulai';
+        }
+        query = query
+            .gte(dateColumn, startDate!.toIso8601String())
+            .lte(
+              dateColumn,
+              endDate!.add(const Duration(days: 1)).toIso8601String(),
+            );
+      }
 
-    if (selectedStatus != null && selectedStatus != 'Semua') {
-      query = query.eq('status', selectedStatus!);
+      if (selectedStatus != null && selectedStatus != 'Semua') {
+        if (widget.reportType == ReportType.leave) {
+          query = query.eq('jenis_surat', selectedStatus!);
+        } else {
+          query = query.eq('status', selectedStatus!);
+        }
+      }
     }
 
     final res = await query;
-    setState(() {
-      _data = res as List<dynamic>;
-    });
+    if (widget.reportType == ReportType.performance) {
+      // Aggregate specific for Performance timeframe ranges
+      final Map<String, Map<String, dynamic>> aggregatedMap = {};
+      for (var row in (res as List<dynamic>)) {
+        final userId = row['user_id'];
+        if (!aggregatedMap.containsKey(userId)) {
+          aggregatedMap[userId] = Map<String, dynamic>.from(row);
+        } else {
+          aggregatedMap[userId]!['poin_absen'] = (aggregatedMap[userId]!['poin_absen'] ?? 0) + (row['poin_absen'] ?? 0);
+          aggregatedMap[userId]!['poin_tugas'] = (aggregatedMap[userId]!['poin_tugas'] ?? 0) + (row['poin_tugas'] ?? 0);
+          aggregatedMap[userId]!['total_poin'] = (aggregatedMap[userId]!['total_poin'] ?? 0) + (row['total_poin'] ?? 0);
+        }
+      }
+
+      final aggregatedList = aggregatedMap.values.toList();
+      aggregatedList.sort((a, b) => (b['total_poin'] as int).compareTo(a['total_poin'] as int));
+
+      setState(() {
+        _data = aggregatedList;
+      });
+    } else {
+      setState(() {
+        _data = res as List<dynamic>;
+      });
+    }
   }
 
   // --- PDF GENERATION ---
@@ -242,6 +202,10 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
           final list = _data.map((e) => AttendanceModel.fromJson(e)).toList();
           url = await _pdfService.generateAttendanceReport(list);
           break;
+        case ReportType.leave:
+          final list = _data.map((e) => LeaveModel.fromJson(e)).toList();
+          url = await _pdfService.generateLeaveReport(list);
+          break;
         case ReportType.incomingLetter:
           final list = _data.map((e) => LetterModel.fromIncoming(e)).toList();
           url = await _pdfService.generateIncomingLetterReport(list);
@@ -249,6 +213,17 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
         case ReportType.outgoingLetter:
           final list = _data.map((e) => LetterModel.fromOutgoing(e)).toList();
           url = await _pdfService.generateOutgoingLetterReport(list);
+          break;
+        case ReportType.operationalExpense:
+          final list = _data.map((e) => ExpenseModel.fromJson(e)).toList();
+          url = await _pdfService.generateExpenseReport(list);
+          break;
+        case ReportType.performance:
+          final list = _data.map((e) => PerformanceModel.fromJson(e)).toList();
+          String periodeTitle = startMonth == endMonth 
+              ? "${_monthNames[startMonth!]} $selectedYear" 
+              : "${_monthNames[startMonth!]} - ${_monthNames[endMonth!]} $selectedYear";
+          url = await _pdfService.generatePerformanceReport(list, periodeTitle);
           break;
       }
 
@@ -347,48 +322,90 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
               children: [
                 Row(
                   children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        icon: const Icon(Icons.calendar_today),
-                        label: Text(
-                          startDate == null
-                              ? "Pilih Tanggal"
-                              : "${DateFormat('dd/MM/yy').format(startDate!)} - ${DateFormat('dd/MM/yy').format(endDate!)}",
-                        ),
-                        onPressed: _pickDateRange,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    if (widget.reportType == ReportType.project ||
-                        widget.reportType == ReportType.task ||
-                        widget.reportType == ReportType.attendance)
+                    if (widget.reportType == ReportType.performance) ...[
                       Expanded(
-                        child: DropdownButtonFormField<String>(
-                          decoration: const InputDecoration(
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 0,
-                            ),
-                            border: OutlineInputBorder(),
-                            labelText: "Status",
-                          ),
-                          key: ValueKey(selectedStatus),
-                          initialValue: selectedStatus,
-                          items: _getStatusOptions()
-                              .map(
-                                (e) =>
-                                    DropdownMenuItem(value: e, child: Text(e)),
-                              )
-                              .toList(),
+                        child: DropdownButtonFormField<int>(
+                          decoration: const InputDecoration(contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 0), border: OutlineInputBorder(), labelText: "Mulai"),
+                          initialValue: startMonth,
+                          items: List.generate(12, (index) => DropdownMenuItem(value: index + 1, child: Text(_monthNames[index + 1], style: const TextStyle(fontSize: 12), overflow: TextOverflow.ellipsis))),
                           onChanged: (val) {
-                            setState(() => selectedStatus = val);
+                            setState(() => startMonth = val);
                             _fetchData();
                           },
                         ),
                       ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: DropdownButtonFormField<int>(
+                          decoration: const InputDecoration(contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 0), border: OutlineInputBorder(), labelText: "Sampai"),
+                          initialValue: endMonth,
+                          items: List.generate(12, (index) => DropdownMenuItem(value: index + 1, child: Text(_monthNames[index + 1], style: const TextStyle(fontSize: 12), overflow: TextOverflow.ellipsis))),
+                          onChanged: (val) {
+                            setState(() => endMonth = val);
+                            _fetchData();
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: DropdownButtonFormField<int>(
+                          decoration: const InputDecoration(contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 0), border: OutlineInputBorder(), labelText: "Tahun"),
+                          initialValue: selectedYear,
+                          items: [DateTime.now().year - 1, DateTime.now().year, DateTime.now().year + 1]
+                              .map((year) => DropdownMenuItem(value: year, child: Text(year.toString(), style: const TextStyle(fontSize: 12))))
+                              .toList(),
+                          onChanged: (val) {
+                            setState(() => selectedYear = val);
+                            _fetchData();
+                          },
+                        ),
+                      ),
+                    ] else ...[
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.calendar_today),
+                          label: Text(
+                            startDate == null
+                                ? "Pilih Tanggal"
+                                : "${DateFormat('dd/MM/yy').format(startDate!)} - ${DateFormat('dd/MM/yy').format(endDate!)}",
+                          ),
+                          onPressed: _pickDateRange,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      if (widget.reportType == ReportType.project ||
+                          widget.reportType == ReportType.task ||
+                          widget.reportType == ReportType.attendance ||
+                          widget.reportType == ReportType.leave ||
+                          widget.reportType == ReportType.operationalExpense)
+                        Expanded(
+                          child: DropdownButtonFormField<String>(
+                            decoration: const InputDecoration(
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 0,
+                              ),
+                              border: OutlineInputBorder(),
+                              labelText: "Status",
+                            ),
+                            key: ValueKey(selectedStatus),
+                            initialValue: selectedStatus,
+                            items: _getStatusOptions()
+                                .map(
+                                  (e) =>
+                                      DropdownMenuItem(value: e, child: Text(e)),
+                                )
+                                .toList(),
+                            onChanged: (val) {
+                              setState(() => selectedStatus = val);
+                              _fetchData();
+                            },
+                          ),
+                        ),
+                    ],
                   ],
                 ),
-                if (startDate != null)
+                if (startDate != null || widget.reportType == ReportType.performance)
                   Align(
                     alignment: Alignment.centerRight,
                     child: TextButton(
@@ -397,6 +414,11 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
                           startDate = null;
                           endDate = null;
                           selectedStatus = null;
+                          if (widget.reportType == ReportType.performance) {
+                            startMonth = DateTime.now().month;
+                            endMonth = DateTime.now().month;
+                            selectedYear = DateTime.now().year;
+                          }
                         });
                         _fetchData();
                       },
@@ -445,7 +467,11 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
     } else if (widget.reportType == ReportType.task) {
       return ['Semua', 'To Do', 'In Progress', 'Waiting Approval', 'Completed'];
     } else if (widget.reportType == ReportType.attendance) {
-      return ['Semua', 'Hadir', 'Izin', 'Sakit', 'Cuti'];
+      return ['Semua', 'Hadir', 'Telat'];
+    } else if (widget.reportType == ReportType.leave) {
+      return ['Semua', 'Izin', 'Sakit', 'Cuti'];
+    } else if (widget.reportType == ReportType.operationalExpense) {
+      return ['Semua', 'Pending', 'Approved', 'Rejected'];
     }
     return ['Semua'];
   }
@@ -484,8 +510,16 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
         }
 
         subtitle =
-            "${DateFormat('dd MMM yyyy').format(DateTime.parse(item['tanggal']))} | Masuk: $checkInDisplay";
+            "${DateFormat('dd MMM yyyy').format(DateTime.parse(item['tanggal'] ?? DateTime.now().toIso8601String()))} | Masuk: $checkInDisplay";
         status = item['status'] ?? '-';
+        break;
+      case ReportType.leave:
+        final userLevel = item['users'] ?? {'nama': 'Unknown'};
+        title = "${userLevel['nama']} (${item['jenis_surat']})";
+        final tglAwal = item['tanggal_mulai'] != null ? DateFormat('dd MMM').format(DateTime.parse(item['tanggal_mulai'])) : '-';
+        final tglAkhir = item['tanggal_selesai'] != null ? DateFormat('dd MMM yyyy').format(DateTime.parse(item['tanggal_selesai'])) : '-';
+        subtitle = "Tgl: $tglAwal s/d $tglAkhir";
+        status = item['status'] ?? 'Pending';
         break;
       case ReportType.incomingLetter:
       case ReportType.outgoingLetter:
@@ -495,6 +529,18 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
         status = widget.reportType == ReportType.incomingLetter
             ? "Masuk"
             : "Keluar";
+        break;
+      case ReportType.operationalExpense:
+        title = item['keterangan'] ?? 'Tanpa Keterangan';
+        final nominal = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(item['jumlah_dana'] ?? 0);
+        subtitle = "Nominal: $nominal | Tgl: ${item['tanggal_pengajuan']}";
+        status = item['status'] ?? '-';
+        break;
+      case ReportType.performance:
+        title = item['users'] != null ? item['users']['nama'] : 'Unknown';
+        String periodeStr = startMonth == endMonth ? _monthNames[startMonth!] : "${_monthNames[startMonth!]} - ${_monthNames[endMonth!]}";
+        subtitle = "Periode: $periodeStr ${item['tahun']} | Tugas: ${item['poin_tugas']} | Absen: ${item['poin_absen']}";
+        status = "${item['total_poin']} Pkt";
         break;
     }
 

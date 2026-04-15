@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'report_preview_screen.dart';
 
-enum ReportType { project, task, attendance, incomingLetter, outgoingLetter }
+enum ReportType { project, task, attendance, leave, incomingLetter, outgoingLetter, operationalExpense, performance }
 
 class AdminReportSelectionScreen extends StatelessWidget {
   const AdminReportSelectionScreen({super.key});
@@ -33,10 +33,17 @@ class AdminReportSelectionScreen extends StatelessWidget {
           ),
           _buildOption(
             context,
-            "Laporan Absensi",
-            Icons.people,
-            Colors.green,
+            "Laporan Absensi (Kehadiran Harian)",
+            Icons.fingerprint,
+            Colors.indigo,
             ReportType.attendance,
+          ),
+          _buildOption(
+            context,
+            "Laporan Rekap Izin & Cuti",
+            Icons.event_note,
+            Colors.indigo.shade300,
+            ReportType.leave,
           ),
           _buildOption(
             context,
@@ -51,6 +58,20 @@ class AdminReportSelectionScreen extends StatelessWidget {
             Icons.send,
             Colors.red,
             ReportType.outgoingLetter,
+          ),
+          _buildOption(
+            context,
+            "Laporan Keuangan",
+            Icons.account_balance_wallet,
+            Colors.teal,
+            ReportType.operationalExpense,
+          ),
+          _buildOption(
+            context,
+            "Laporan Penilaian Kinerja",
+            Icons.star_rate_rounded,
+            Colors.amber.shade700,
+            ReportType.performance,
           ),
         ],
       ),

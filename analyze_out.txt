@@ -1,0 +1,13 @@
+Analyzing codevision_project...                                 
+
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\presentation\admin\admin_dashboard_stats.dart:163:51 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\presentation\admin\admin_dashboard_stats.dart:228:45 - deprecated_member_use
+   info - 'value' is deprecated and shouldn't be used. Use initialValue instead. This will set the initial value for the form field. This feature was deprecated after v3.33.0-1.0.pre - lib\presentation\admin\performance\admin_performance_screen.dart:170:21 - deprecated_member_use
+   info - 'value' is deprecated and shouldn't be used. Use initialValue instead. This will set the initial value for the form field. This feature was deprecated after v3.33.0-1.0.pre - lib\presentation\admin\performance\admin_performance_screen.dart:184:21 - deprecated_member_use
+   info - 'value' is deprecated and shouldn't be used. Use initialValue instead. This will set the initial value for the form field. This feature was deprecated after v3.33.0-1.0.pre - lib\presentation\admin\report\report_preview_screen.dart:329:27 - deprecated_member_use
+   info - 'value' is deprecated and shouldn't be used. Use initialValue instead. This will set the initial value for the form field. This feature was deprecated after v3.33.0-1.0.pre - lib\presentation\admin\report\report_preview_screen.dart:341:27 - deprecated_member_use
+   info - 'value' is deprecated and shouldn't be used. Use initialValue instead. This will set the initial value for the form field. This feature was deprecated after v3.33.0-1.0.pre - lib\presentation\admin\report\report_preview_screen.dart:353:27 - deprecated_member_use
+   info - Unnecessary use of string interpolation - lib\presentation\admin\report\report_preview_screen.dart:541:54 - unnecessary_string_interpolations
+   info - 'value' is deprecated and shouldn't be used. Use initialValue instead. This will set the initial value for the form field. This feature was deprecated after v3.33.0-1.0.pre - lib\presentation\home\expenses\add_expense_screen.dart:175:17 - deprecated_member_use
+   info - Unnecessary use of 'toList' in a spread - lib\presentation\home\expenses\add_expense_screen.dart:188:22 - unnecessary_to_list_in_spreads
+

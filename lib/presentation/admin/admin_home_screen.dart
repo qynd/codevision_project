@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../auth/login_screen.dart'; // Import Login
 import 'employee/employee_list_screen.dart';
-import 'project/admin_project_list_screen.dart';
-import 'admin_dashboard_stats.dart'; // File baru untuk statistik
+import 'admin_dashboard_stats.dart'; 
+import 'performance/admin_performance_screen.dart';
 
 class AdminHomeScreen extends StatefulWidget {
   const AdminHomeScreen({super.key});
@@ -20,17 +20,17 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
   // List Halaman
   final List<Widget> _pages = [
     const AdminDashboardStats(), // Halaman Dashboard diagram
-    const AdminProjectListScreen(), // Halaman Proyek
     const EmployeeListScreen(), // Halaman Pegawai
     const AdminLetterListScreen(), // (Opsional) Surat
+    const AdminPerformanceScreen(), // Halaman Kinerja
   ];
 
   // Judul tiap halaman
   final List<String> _titles = [
     "Dashboard",
-    "Kelola Proyek",
     "Kelola Pegawai",
     "Validasi Surat",
+    "Penilaian Kinerja",
   ];
 
   // Fungsi Logout Admin
@@ -68,12 +68,9 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
             icon: Icon(Icons.dashboard),
             label: 'Dashboard',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.assignment),
-            label: 'Proyek',
-          ),
           BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Pegawai'),
           BottomNavigationBarItem(icon: Icon(Icons.email), label: 'Surat'),
+          BottomNavigationBarItem(icon: Icon(Icons.star_rate_rounded), label: 'Kinerja'),
         ],
         currentIndex: _selectedIndex,
         selectedItemColor: Colors.indigo,

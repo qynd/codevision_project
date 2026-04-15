@@ -70,7 +70,7 @@ class _AdminPermissionApprovalViewState
   Future<List<Map<String, dynamic>>> _fetchLetters() async {
     var query = supabase
         .from('letters') // Tabel Izin/Cuti
-        .select('*, users(nama, jabatan, nip)');
+        .select('*, users!letters_user_id_fkey(nama, jabatan, nip)');
 
     if (_filterStatus != 'All') {
       query = query.eq('status', _filterStatus);
@@ -284,6 +284,18 @@ class _AdminPermissionApprovalViewState
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.hasError) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Text(
+                      "Error mengambil data: ${snapshot.error}",
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.red),
+                    ),
+                  ),
+                );
               }
               if (!snapshot.hasData || snapshot.data!.isEmpty) {
                 return const Center(child: Text("Tidak ada pengajuan izin."));

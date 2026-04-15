@@ -3,6 +3,7 @@ import 'home_screen.dart';
 import '../attendance/attendance_screen.dart';
 import '../project/project_screen.dart';
 import '../letter/letter_screen.dart';
+import 'expenses/expense_list_screen.dart';
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
@@ -40,6 +41,7 @@ class _MainNavigationState extends State<MainNavigation> {
           const AttendanceScreen(),
           const ProjectScreen(),
           const LetterScreen(),
+          const ExpenseListScreen(),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
@@ -65,6 +67,10 @@ class _MainNavigationState extends State<MainNavigation> {
           BottomNavigationBarItem(
             icon: Icon(Icons.email_rounded),
             label: 'Surat',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.account_balance_wallet_rounded),
+            label: 'Keuangan',
           ),
         ],
       ),

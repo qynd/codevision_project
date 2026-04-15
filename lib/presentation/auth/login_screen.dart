@@ -3,6 +3,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/constants/app_theme.dart';
 import '../home/main_navigation.dart';
 import '../admin/admin_home_screen.dart';
+import '../manager/manager_home_screen.dart';
+import '../director/director_home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -37,13 +39,23 @@ class _LoginScreenState extends State<LoginScreen> {
             .eq('id', response.user!.id)
             .single();
 
-        final role = userData['role'] ?? 'pegawai';
+        final role = (userData['role'] ?? 'pegawai').toString().toLowerCase();
 
         if (mounted) {
-          if (role == 'admin') {
+          if (role == 'hrd_ga') {
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(builder: (context) => const AdminHomeScreen()),
+            );
+          } else if (role == 'manajer') {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const ManagerHomeScreen()),
+            );
+          } else if (role == 'direktur') {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const DirectorHomeScreen()),
             );
           } else {
             Navigator.pushReplacement(

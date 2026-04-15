@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../home/main_navigation.dart';
 import '../admin/admin_home_screen.dart';
+import '../manager/manager_home_screen.dart';
+import '../director/director_home_screen.dart';
 import 'login_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -61,17 +63,21 @@ class _SplashScreenState extends State<SplashScreen>
             .from('users')
             .select('role')
             .eq('id', user!.id)
-            .single();
+            .single()
+            .timeout(const Duration(seconds: 8));
 
-        final role = userData['role'] ?? 'pegawai';
+        final role = (userData['role'] ?? 'pegawai').toString().toLowerCase();
 
         if (mounted) {
           // Animasi transisi custom
           Navigator.of(context).pushReplacement(
             PageRouteBuilder(
-              pageBuilder: (_, __, ___) => role == 'admin'
-                  ? const AdminHomeScreen()
-                  : const MainNavigation(),
+              pageBuilder: (_, __, ___) {
+                if (role == 'hrd_ga') return const AdminHomeScreen();
+                if (role == 'manajer') return const ManagerHomeScreen();
+                if (role == 'direktur') return const DirectorHomeScreen();
+                return const MainNavigation();
+              },
               transitionsBuilder: (_, a, __, c) =>
                   FadeTransition(opacity: a, child: c),
               transitionDuration: const Duration(milliseconds: 800),
