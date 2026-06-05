@@ -37,6 +37,29 @@ class _AdminAddTaskScreenState extends State<AdminAddTaskScreen> {
     setState(() => _isLoading = true);
 
     try {
+      // Cek batas tugas (maksimal 5 tugas aktif per pegawai)
+      if (_selectedEmployeeId != null) {
+        final activeTasksResponse = await supabase
+            .from('tasks')
+            .select('id')
+            .eq('assigned_to', _selectedEmployeeId!)
+            .neq('status', 'Done');
+        
+        final activeTasks = activeTasksResponse as List<dynamic>;
+        if (activeTasks.length >= 5) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Pegawai ini sudah mencapai batas maksimal 5 tugas aktif."),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          setState(() => _isLoading = false);
+          return; // Batalkan penyimpanan
+        }
+      }
+
       // PERBAIKAN 2: Sesuaikan nama key dengan nama kolom di Database Supabase Anda
       await supabase.from('tasks').insert({
         'project_id': widget.projectId, // UUID Project

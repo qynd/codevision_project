@@ -57,21 +57,32 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
   Future<List<TaskModel>> _fetchTasks() async {
     if (_currentUser == null) return [];
 
-    var query = supabase
-        .from('tasks')
-        .select()
-        .eq('project_id', widget.project.id);
+    try {
+      var query = supabase.from('tasks').select();
+      
+      // Handle project_id type (bisa int atau string di database)
+      final projectIdInt = int.tryParse(widget.project.id);
+      if (projectIdInt != null) {
+        query = query.eq('project_id', projectIdInt);
+      } else {
+        query = query.eq('project_id', widget.project.id);
+      }
 
-    // FILTER: Jika Pegawai, hanya ambil tugas miliknya
-    // Kecuali jika user Admin, ambil semua
-    if (_currentUser!.role != 'Admin') {
-      query = query.eq('assigned_to', _currentUser!.id);
+      // FILTER: Jika Pegawai, hanya ambil tugas miliknya
+      // Kecuali jika user Manager/Admin, ambil semua
+      final userRole = _currentUser!.role.toLowerCase().trim();
+      if (userRole != 'manager' && userRole != 'admin') {
+        query = query.eq('assigned_to', _currentUser!.id);
+      }
+
+      final response = await query.order('created_at', ascending: true);
+
+      final data = response as List<dynamic>;
+      return data.map((json) => TaskModel.fromJson(json)).toList();
+    } catch (e) {
+      debugPrint("Error fetching tasks: $e");
+      throw Exception("Error fetching tasks: $e");
     }
-
-    final response = await query.order('created_at', ascending: true);
-
-    final data = response as List<dynamic>;
-    return data.map((json) => TaskModel.fromJson(json)).toList();
   }
 
   // Helper: Cari Nama User berdasarkan ID
@@ -85,10 +96,11 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     }
   }
 
-  // C. Tambah Tugas dengan Pilihan User (CREATE) - ONLY ADMIN
+  // C. Tambah Tugas dengan Pilihan User (CREATE) - ONLY MANAGER / ADMIN
   void _showAddTaskSheet() {
     // Double check logic (opsional karena FAB juga disembunyikan)
-    if (_currentUser?.role != 'Admin') return;
+    final userRole = _currentUser?.role.toLowerCase().trim();
+    if (userRole != 'manager' && userRole != 'admin') return;
 
     final titleController = TextEditingController();
     final descController = TextEditingController();
@@ -176,6 +188,29 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                             setSheetState(() => isSubmitting = true);
 
                             try {
+                              // Validasi batas maksimal tugas (Maksimal 5)
+                              if (selectedUserId != null) {
+                                final activeTasksResponse = await supabase
+                                    .from('tasks')
+                                    .select('id')
+                                    .eq('assigned_to', selectedUserId!)
+                                    .neq('status', 'Done');
+                                
+                                final activeTasks = activeTasksResponse as List<dynamic>;
+                                if (activeTasks.length >= 5) {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text("Pegawai ini sudah mencapai batas maksimal 5 tugas aktif."),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
+                                  setSheetState(() => isSubmitting = false);
+                                  return; // Batalkan penyimpanan
+                                }
+                              }
+
                               await supabase.from('tasks').insert({
                                 'project_id': widget.project.id,
                                 'judul': titleController.text,
@@ -226,7 +261,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
   void _showUpdateTaskDialog(TaskModel task) {
     String selectedStatus = task.status;
     double sliderValue = task.progress.toDouble();
-    bool isAdmin = _currentUser?.role == 'Admin';
+    final userRole = _currentUser?.role.toLowerCase().trim();
+    bool isManager = userRole == 'manager' || userRole == 'admin';
 
     // Tentukan Opsi Status
     // Step 1: Default Statuses
@@ -235,8 +271,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     // Step 2: Add 'Waiting Approval' always available
     statusOptions.add('Waiting Approval');
 
-    // Step 3: Add 'Done' ONLY if Admin
-    if (isAdmin) {
+    // Step 3: Add 'Done' ONLY if Manager
+    if (isManager) {
       statusOptions.add('Done');
     }
 
@@ -313,8 +349,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                 ],
               ),
               actions: [
-                // --- TOMBOL HAPUS (HANYA ADMIN) ---
-                if (isAdmin)
+                // --- TOMBOL HAPUS (HANYA MANAGER) ---
+                if (isManager)
                   TextButton(
                     style: TextButton.styleFrom(foregroundColor: Colors.red),
                     onPressed: () async {
@@ -502,6 +538,9 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                       if (snapshot.connectionState == ConnectionState.waiting) {
                         return const Center(child: CircularProgressIndicator());
                       }
+                      if (snapshot.hasError) {
+                        return Center(child: Text("Error: ${snapshot.error}", textAlign: TextAlign.center, style: const TextStyle(color: Colors.red)));
+                      }
                       if (!snapshot.hasData || snapshot.data!.isEmpty) {
                         return const Center(child: Text("Belum ada tugas."));
                       }
@@ -597,8 +636,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                 ),
               ],
             ),
-      // FAB HANYA UNTUK ADMIN
-      floatingActionButton: _currentUser?.role == 'Admin'
+      // FAB HANYA UNTUK MANAGER / ADMIN
+      floatingActionButton: (_currentUser?.role.toLowerCase().trim() == 'manager' || _currentUser?.role.toLowerCase().trim() == 'admin')
           ? FloatingActionButton.extended(
               onPressed: _showAddTaskSheet,
               label: const Text("Tugas Baru"),

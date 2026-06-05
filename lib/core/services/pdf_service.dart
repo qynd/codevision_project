@@ -24,15 +24,15 @@ class PdfService {
   /// Laporan Project: Detail project, status, timeline
   Future<String> generateProjectReport(List<ProjectModel> data) async {
     final pdf = pw.Document();
-    final logoImage = await _loadLogo();
+    final logoImage = await loadLogo();
 
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         build: (context) => [
-          _buildLetterhead(logoImage),
+          buildLetterhead(logoImage),
           pw.SizedBox(height: 20),
-          _buildHeader("Laporan Proyek"),
+          buildHeader("Laporan Proyek"),
           pw.SizedBox(height: 20),
           pw.TableHelper.fromTextArray(
             headers: ['Nama Proyek', 'Status', 'Mulai', 'Selesai', 'Deskripsi'],
@@ -70,7 +70,7 @@ class PdfService {
               4: const pw.FlexColumnWidth(3), // Deskripsi
             },
           ),
-          _buildSignature(),
+          buildSignature(),
         ],
       ),
     );
@@ -87,15 +87,15 @@ class PdfService {
   /// Laporan Task: List task & penanggung jawab
   Future<String> generateTaskReport(List<TaskModel> data) async {
     final pdf = pw.Document();
-    final logoImage = await _loadLogo();
+    final logoImage = await loadLogo();
 
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         build: (context) => [
-          _buildLetterhead(logoImage),
+          buildLetterhead(logoImage),
           pw.SizedBox(height: 20),
-          _buildHeader("Laporan Tugas (Task)"),
+          buildHeader("Laporan Tugas (Task)"),
           pw.SizedBox(height: 20),
           pw.TableHelper.fromTextArray(
             headers: [
@@ -137,7 +137,7 @@ class PdfService {
               4: const pw.FlexColumnWidth(3), // Deskripsi (paling lebar)
             },
           ),
-          _buildSignature(),
+          buildSignature(),
         ],
       ),
     );
@@ -151,15 +151,15 @@ class PdfService {
   /// Laporan Absensi: Log kehadiran (Masuk, Pulang, Status)
   Future<String> generateAttendanceReport(List<AttendanceModel> data) async {
     final pdf = pw.Document();
-    final logoImage = await _loadLogo();
+    final logoImage = await loadLogo();
 
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         build: (context) => [
-          _buildLetterhead(logoImage),
+          buildLetterhead(logoImage),
           pw.SizedBox(height: 20),
-          _buildHeader("Laporan Absensi Karyawan"),
+          buildHeader("Laporan Absensi Karyawan"),
           pw.SizedBox(height: 20),
           pw.TableHelper.fromTextArray(
             headers: [
@@ -193,7 +193,7 @@ class PdfService {
               ),
             ),
           ),
-          _buildSignature(),
+          buildSignature(),
         ],
       ),
     );
@@ -207,15 +207,15 @@ class PdfService {
   /// Laporan Rekap Izin & Cuti
   Future<String> generateLeaveReport(List<LeaveModel> data) async {
     final pdf = pw.Document();
-    final logoImage = await _loadLogo();
+    final logoImage = await loadLogo();
 
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         build: (context) => [
-          _buildLetterhead(logoImage),
+          buildLetterhead(logoImage),
           pw.SizedBox(height: 20),
-          _buildHeader("Laporan Rekap Izin & Cuti"),
+          buildHeader("Laporan Rekap Izin & Cuti"),
           pw.SizedBox(height: 20),
           pw.TableHelper.fromTextArray(
             headers: ['Nama Pegawai', 'Jenis', 'Tgl Mulai', 'Tgl Selesai', 'Keterangan', 'Status'],
@@ -233,7 +233,7 @@ class PdfService {
             headerDecoration: const pw.BoxDecoration(color: PdfColors.indigo300),
             rowDecoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey300))),
           ),
-          _buildSignature(),
+          buildSignature(),
         ],
       ),
     );
@@ -246,15 +246,15 @@ class PdfService {
   /// Laporan Surat Masuk
   Future<String> generateIncomingLetterReport(List<LetterModel> data) async {
     final pdf = pw.Document();
-    final logoImage = await _loadLogo();
+    final logoImage = await loadLogo();
 
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         build: (context) => [
-          _buildLetterhead(logoImage),
+          buildLetterhead(logoImage),
           pw.SizedBox(height: 20),
-          _buildHeader("Laporan Surat Masuk"),
+          buildHeader("Laporan Surat Masuk"),
           pw.SizedBox(height: 20),
           pw.TableHelper.fromTextArray(
             headers: ['No. Surat', 'Pengirim', 'Perihal', 'Tanggal'],
@@ -280,7 +280,7 @@ class PdfService {
               ),
             ),
           ),
-          _buildSignature(),
+          buildSignature(),
         ],
       ),
     );
@@ -294,15 +294,15 @@ class PdfService {
   /// Laporan Surat Keluar
   Future<String> generateOutgoingLetterReport(List<LetterModel> data) async {
     final pdf = pw.Document();
-    final logoImage = await _loadLogo();
+    final logoImage = await loadLogo();
 
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         build: (context) => [
-          _buildLetterhead(logoImage),
+          buildLetterhead(logoImage),
           pw.SizedBox(height: 20),
-          _buildHeader("Laporan Surat Keluar"),
+          buildHeader("Laporan Surat Keluar"),
           pw.SizedBox(height: 20),
           pw.TableHelper.fromTextArray(
             headers: ['No. Surat', 'Tujuan', 'Perihal', 'Tanggal'],
@@ -328,7 +328,7 @@ class PdfService {
               ),
             ),
           ),
-          _buildSignature(),
+          buildSignature(),
         ],
       ),
     );
@@ -342,7 +342,7 @@ class PdfService {
   /// Laporan Dana Operasional
   Future<String> generateExpenseReport(List<ExpenseModel> data) async {
     final pdf = pw.Document();
-    final logoImage = await _loadLogo();
+    final logoImage = await loadLogo();
 
     final idRupiah = NumberFormat.currency(
       locale: 'id_ID',
@@ -359,9 +359,9 @@ class PdfService {
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         build: (context) => [
-          _buildLetterhead(logoImage),
+          buildLetterhead(logoImage),
           pw.SizedBox(height: 20),
-          _buildHeader("Laporan Pengeluaran Operasional"),
+          buildHeader("Laporan Pengeluaran Operasional"),
           pw.SizedBox(height: 20),
           pw.TableHelper.fromTextArray(
             headers: [
@@ -409,7 +409,7 @@ class PdfService {
               ),
             ],
           ),
-          _buildSignature(),
+          buildSignature(),
         ],
       ),
     );
@@ -426,15 +426,15 @@ class PdfService {
     String periodeTitle,
   ) async {
     final pdf = pw.Document();
-    final logoImage = await _loadLogo();
+    final logoImage = await loadLogo();
 
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         build: (context) => [
-          _buildLetterhead(logoImage),
+          buildLetterhead(logoImage),
           pw.SizedBox(height: 20),
-          _buildHeader("Laporan Penilaian Kinerja Pegawai"),
+          buildHeader("Laporan Penilaian Kinerja Pegawai"),
           pw.SizedBox(height: 20),
           pw.TableHelper.fromTextArray(
             headers: [
@@ -484,7 +484,7 @@ class PdfService {
               5: const pw.FlexColumnWidth(1),
             },
           ),
-          _buildSignature(),
+          buildSignature(),
         ],
       ),
     );
@@ -500,7 +500,7 @@ class PdfService {
   // ===========================================================================
 
   /// Header Template for consistency
-  pw.Widget _buildHeader(String title) {
+  pw.Widget buildHeader(String title) {
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
@@ -524,7 +524,7 @@ class PdfService {
   // 3. LETTERHEAD & SIGNATURE
   // ===========================================================================
 
-  Future<pw.MemoryImage?> _loadLogo() async {
+  Future<pw.MemoryImage?> loadLogo() async {
     try {
       final imageBytes = await rootBundle.load('assets/images/logo.png');
       return pw.MemoryImage(imageBytes.buffer.asUint8List());
@@ -534,7 +534,7 @@ class PdfService {
     }
   }
 
-  pw.Widget _buildLetterhead(pw.MemoryImage? logoImage) {
+  pw.Widget buildLetterhead(pw.MemoryImage? logoImage) {
     return pw.Column(
       children: [
         pw.Row(
@@ -601,7 +601,7 @@ class PdfService {
     );
   }
 
-  pw.Widget _buildSignature() {
+  pw.Widget buildSignature() {
     return pw.Column(
       children: [
         pw.SizedBox(height: 50), // Spacer from table
