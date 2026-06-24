@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
 import '../../../../data/models/expense_model.dart';
 import '../../home/expenses/add_expense_screen.dart';
+import '../../home/expenses/expense_detail_screen.dart';
 
 class ManagerExpenseApprovalScreen extends StatefulWidget {
   const ManagerExpenseApprovalScreen({super.key});
@@ -114,12 +115,21 @@ class _ManagerExpenseApprovalScreenState extends State<ManagerExpenseApprovalScr
                     itemCount: _expenses.length,
                     itemBuilder: (context, index) {
                       final exp = _expenses[index];
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        elevation: 2,
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
+                      return GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ExpenseDetailScreen(expense: exp),
+                            ),
+                          );
+                        },
+                        child: Card(
+                          margin: const EdgeInsets.only(bottom: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          elevation: 2,
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -196,6 +206,7 @@ class _ManagerExpenseApprovalScreenState extends State<ManagerExpenseApprovalScr
                                 ),
                               ],
                             ],
+                          ),
                           ),
                         ),
                       );

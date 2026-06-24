@@ -32,6 +32,7 @@ class _EmployeeTaskListScreenState extends State<EmployeeTaskListScreen> {
   void _showUpdateProgressDialog(Map<String, dynamic> task) {
     String selectedStatus = task['status'];
     double sliderValue = (task['progress_percent'] as int).toDouble();
+    TextEditingController linkController = TextEditingController(text: task['bukti_hasil_url'] ?? '');
 
     showDialog(
       context: context,
@@ -79,6 +80,15 @@ class _EmployeeTaskListScreenState extends State<EmployeeTaskListScreen> {
                     label: sliderValue.round().toString(),
                     onChanged: (val) => setDialogState(() => sliderValue = val),
                   ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: linkController,
+                    decoration: const InputDecoration(
+                      labelText: "Link Bukti Hasil (Opsional)",
+                      hintText: "Contoh: https://...",
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
                 ],
               ),
               actions: [
@@ -93,6 +103,7 @@ class _EmployeeTaskListScreenState extends State<EmployeeTaskListScreen> {
                         .update({
                           'status': selectedStatus,
                           'progress_percent': sliderValue.toInt(),
+                          'bukti_hasil_url': linkController.text.trim(),
                         })
                         .eq('id', task['id']);
 

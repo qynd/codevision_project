@@ -22,6 +22,7 @@ class _PermissionScreenState extends State<PermissionScreen> {
   String _selectedType = 'Izin';
   DateTime _selectedDate = DateTime.now(); // Default hari ini
   bool _isLoading = false;
+  int _remainingCuti = 10;
 
   @override
   void initState() {
@@ -31,6 +32,47 @@ class _PermissionScreenState extends State<PermissionScreen> {
       'dd MMMM yyyy',
       'id_ID',
     ).format(_selectedDate);
+    _fetchRemainingCuti();
+  }
+
+  Future<void> _fetchRemainingCuti() async {
+    try {
+      final user = supabase.auth.currentUser;
+      if (user == null) return;
+
+      final currentYear = DateTime.now().year;
+
+      final response = await supabase
+          .from('letters')
+          .select('tanggal_mulai, tanggal_selesai, status')
+          .eq('user_id', user.id)
+          .eq('jenis_surat', 'Cuti')
+          .neq('status', 'Rejected');
+
+      final letters = response as List<dynamic>;
+      int usedDays = 0;
+
+      for (var letter in letters) {
+        final dateStr = letter['tanggal_mulai'] as String?;
+        if (dateStr != null) {
+          final dt = DateTime.tryParse(dateStr);
+          if (dt != null && dt.year == currentYear) {
+            final start = DateTime.parse(letter['tanggal_mulai']);
+            final end = DateTime.parse(letter['tanggal_selesai']);
+            final diff = end.difference(start).inDays + 1;
+            usedDays += diff;
+          }
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _remainingCuti = (10 - usedDays).clamp(0, 10);
+        });
+      }
+    } catch (e) {
+      debugPrint("Error fetch remaining cuti: $e");
+    }
   }
 
   @override
@@ -218,9 +260,26 @@ class _PermissionScreenState extends State<PermissionScreen> {
 
               // --- DURASI (HANYA MUNCUL JIKA CUTI) ---
               if (_selectedType == 'Cuti') ...[
-                const Text(
-                  "Lama Cuti (Hari)",
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      "Lama Cuti (Hari)",
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: _remainingCuti > 0 ? Colors.green.shade50 : Colors.red.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: _remainingCuti > 0 ? Colors.green.shade200 : Colors.red.shade200),
+                      ),
+                      child: Text(
+                        "Sisa Cuti: $_remainingCuti Hari",
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: _remainingCuti > 0 ? Colors.green.shade700 : Colors.red.shade700),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 8),
                 TextFormField(
@@ -233,7 +292,10 @@ class _PermissionScreenState extends State<PermissionScreen> {
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) return 'Wajib diisi';
-                    if (int.tryParse(value) == null) return 'Harus angka';
+                    final parsed = int.tryParse(value);
+                    if (parsed == null) return 'Harus angka';
+                    if (parsed <= 0) return 'Minimal 1 hari';
+                    if (parsed > _remainingCuti) return 'Melebihi sisa cuti tahunan ($_remainingCuti hari)';
                     return null;
                   },
                 ),

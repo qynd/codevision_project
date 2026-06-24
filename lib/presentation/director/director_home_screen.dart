@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../auth/login_screen.dart';
 import '../admin/report/admin_report_selection_screen.dart';
 import 'director_dashboard_stats.dart';
+import 'director_expense_list_screen.dart';
 
 class DirectorHomeScreen extends StatefulWidget {
   const DirectorHomeScreen({super.key});
@@ -17,11 +18,13 @@ class _DirectorHomeScreenState extends State<DirectorHomeScreen> {
 
   final List<Widget> _pages = [
     const DirectorDashboardStats(),
+    const DirectorExpenseListScreen(),
     const AdminReportSelectionScreen(), // Reusing the report printing screen for director
   ];
 
   final List<String> _titles = [
     "Executive Dashboard",
+    "Semua Pengeluaran",
     "Laporan Organisasi",
   ];
 
@@ -58,6 +61,10 @@ class _DirectorHomeScreenState extends State<DirectorHomeScreen> {
           BottomNavigationBarItem(
             icon: Icon(Icons.dashboard_rounded),
             label: 'Dashboard',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.receipt_long_rounded),
+            label: 'Pengeluaran',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.analytics_rounded),

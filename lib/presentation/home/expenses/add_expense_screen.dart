@@ -1,5 +1,8 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AddExpenseScreen extends StatefulWidget {
@@ -21,10 +24,20 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   bool _isLoading = false;
   String _currentUserRole = 'Pegawai'; 
 
+  XFile? _selectedImage;
+
   @override
   void initState() {
     super.initState();
     _fetchInitialData();
+  }
+
+  Future<void> _pickImage() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+    if (image != null) {
+      setState(() => _selectedImage = image);
+    }
   }
 
   Future<void> _fetchInitialData() async {
@@ -80,6 +93,27 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       final jumlahStr = _jumlahController.text.replaceAll(RegExp(r'[^0-9]'), '');
       final double jumlah = double.parse(jumlahStr);
 
+      // Upload image
+      String? imageUrl;
+      if (_selectedImage != null) {
+        final bytes = await _selectedImage!.readAsBytes();
+        final String fileExt = _selectedImage!.name.split('.').last;
+        final fileName = '${DateTime.now().millisecondsSinceEpoch}.$fileExt';
+        final path = fileName;
+
+        await supabase.storage
+            .from('operational_expenses')
+            .uploadBinary(
+              path,
+              bytes,
+              fileOptions: FileOptions(
+                contentType: 'image/$fileExt',
+                upsert: false,
+              ),
+            );
+        imageUrl = supabase.storage.from('operational_expenses').getPublicUrl(path);
+      }
+
       // Logika khusus: Jika yang input Manajer, langsung Approved. Jika lainnya, Pending.
       String status = 'Pending';
       if (_currentUserRole == 'manajer') {
@@ -93,6 +127,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
         'keterangan': _keteranganController.text.trim(),
         'status': status,
         'tanggal_pengajuan': DateTime.now().toIso8601String().split('T')[0],
+        if (imageUrl != null) 'bukti_nota_url': imageUrl,
       });
 
       if (mounted) {
@@ -188,6 +223,50 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                   }),
                 ],
                 onChanged: (val) => setState(() => _selectedProjectId = val),
+              ),
+              const SizedBox(height: 16),
+
+              const Text(
+                "Bukti Nota / Struk (Opsional):",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 10),
+
+              GestureDetector(
+                onTap: _pickImage,
+                child: Container(
+                  height: 150,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[200],
+                    border: Border.all(color: Colors.grey),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: _selectedImage != null
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: kIsWeb
+                              ? Image.network(
+                                  _selectedImage!.path,
+                                  fit: BoxFit.cover,
+                                )
+                              : Image.file(
+                                  File(_selectedImage!.path),
+                                  fit: BoxFit.cover,
+                                ),
+                        )
+                      : const Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.camera_alt,
+                              size: 40,
+                              color: Colors.grey,
+                            ),
+                            Text("Ketuk untuk upload bukti nota"),
+                          ],
+                        ),
+                ),
               ),
               const SizedBox(height: 32),
 

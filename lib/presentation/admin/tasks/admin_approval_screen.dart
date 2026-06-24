@@ -146,6 +146,29 @@ class _AdminApprovalScreenState extends State<AdminApprovalScreen> {
                         "Oleh: $userName",
                         style: TextStyle(color: Colors.grey[700], fontSize: 12),
                       ),
+                      if (task['bukti_hasil_url'] != null && task['bukti_hasil_url'].toString().isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.blue.shade200),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.link, color: Colors.blue, size: 16),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: SelectableText(
+                                  task['bukti_hasil_url'],
+                                  style: const TextStyle(color: Colors.blue, fontSize: 12, decoration: TextDecoration.underline),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 12),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,

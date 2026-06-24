@@ -111,17 +111,54 @@ class _ManagerFilteredListScreenState extends State<ManagerFilteredListScreen> {
                     } else if (item is TaskModel) {
                       return Card(
                         margin: const EdgeInsets.only(bottom: 12),
-                        child: ListTile(
-                          leading: const CircleAvatar(
-                            backgroundColor: Colors.orange,
-                            child: Icon(Icons.assignment, color: Colors.white),
-                          ),
-                          title: Text(item.judul, style: const TextStyle(fontWeight: FontWeight.bold)),
-                          subtitle: Column(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text("PIC: ${item.assignedToName ?? 'Belum ada'}"),
+                              Row(
+                                children: [
+                                  const CircleAvatar(
+                                    backgroundColor: Colors.orange,
+                                    child: Icon(Icons.assignment, color: Colors.white),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(item.judul, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                        Text("PIC: ${item.assignedToName ?? 'Belum ada'}", style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
                               Text("Status: ${item.status} (${item.progress}%)"),
+                              if (item.buktiHasilUrl != null && item.buktiHasilUrl!.isNotEmpty) ...[
+                                const SizedBox(height: 8),
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.blue.shade50,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: Colors.blue.shade200),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.link, color: Colors.blue, size: 16),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: SelectableText(
+                                          item.buktiHasilUrl!,
+                                          style: const TextStyle(color: Colors.blue, fontSize: 12, decoration: TextDecoration.underline),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                         ),

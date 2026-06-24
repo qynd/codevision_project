@@ -24,11 +24,11 @@ class _DirectorDashboardStatsState extends State<DirectorDashboardStats> {
   double totalExpenses = 0.0;
 
   // Chart Variables
-  List<double> dailyExpenses = List.generate(31, (index) => 0.0);
+  List<Map<String, dynamic>> activeDailyExpenses = [];
   double maxExpense = 100000;
-  int daysCount = 31;
   String errorMessage = "";
 
+  DateTime _selectedMonth = DateTime.now();
   bool isLoading = true;
 
   @override
@@ -54,28 +54,31 @@ class _DirectorDashboardStatsState extends State<DirectorDashboardStats> {
       final expenses = results[3] as List<dynamic>;
 
       double sumExpense = 0;
-      final now = DateTime.now();
-      int currentDaysInMonth = DateUtils.getDaysInMonth(now.year, now.month);
+      int currentDaysInMonth = DateUtils.getDaysInMonth(_selectedMonth.year, _selectedMonth.month);
 
       List<double> tempExpenses = List.generate(currentDaysInMonth, (index) => 0.0);
-      double tempMax = 0.0;
 
       for (var exp in expenses) {
-        sumExpense += (exp['jumlah_dana'] as num?)?.toDouble() ?? 0.0;
-        
         final dateStr = exp['tanggal_pengajuan'];
         final amount = (exp['jumlah_dana'] as num?)?.toDouble() ?? 0.0;
         if (dateStr != null) {
           final date = DateTime.tryParse(dateStr);
-          if (date != null && date.year == now.year && date.month == now.month) {
+          if (date != null && date.year == _selectedMonth.year && date.month == _selectedMonth.month) {
+             sumExpense += amount;
              tempExpenses[date.day - 1] += amount;
           }
         }
       }
 
-      for (var val in tempExpenses) {
-        if (val > tempMax) tempMax = val;
+      List<Map<String, dynamic>> tempActive = [];
+      double tempMax = 0.0;
+      for (int i = 0; i < tempExpenses.length; i++) {
+        if (tempExpenses[i] > 0) {
+          tempActive.add({'day': i + 1, 'amount': tempExpenses[i]});
+          if (tempExpenses[i] > tempMax) tempMax = tempExpenses[i];
+        }
       }
+
       if (tempMax == 0) tempMax = 1000000;
 
       if (mounted) {
@@ -88,9 +91,8 @@ class _DirectorDashboardStatsState extends State<DirectorDashboardStats> {
           todayAttendances = attendances.length;
           
           totalExpenses = sumExpense;
-          dailyExpenses = tempExpenses;
+          activeDailyExpenses = tempActive;
           maxExpense = tempMax;
-          daysCount = currentDaysInMonth;
           
           isLoading = false;
         });
@@ -158,24 +160,63 @@ class _DirectorDashboardStatsState extends State<DirectorDashboardStats> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      "Executive Overview,",
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.white70,
-                        fontWeight: FontWeight.w500,
-                      ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: const [
+                        Text(
+                          "Executive Overview,",
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.white70,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          "Director Dashboard",
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      "Director Dashboard",
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.chevron_left, color: Colors.white),
+                            onPressed: () {
+                              setState(() {
+                                _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month - 1, 1);
+                                isLoading = true;
+                              });
+                              _fetchStats();
+                            },
+                          ),
+                          Text(
+                            DateFormat('MMM yyyy', 'id_ID').format(_selectedMonth),
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.chevron_right, color: Colors.white),
+                            onPressed: () {
+                              setState(() {
+                                _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month + 1, 1);
+                                isLoading = true;
+                              });
+                              _fetchStats();
+                            },
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -262,96 +303,104 @@ class _DirectorDashboardStatsState extends State<DirectorDashboardStats> {
                             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
                           ),
                           Text(
-                            DateFormat('MMMM yyyy', 'id_ID').format(DateTime.now()),
-                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.deepPurple),
+                            DateFormat('MMMM yyyy', 'id_ID').format(_selectedMonth),
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.deepPurple),
                           ),
                         ],
                       ),
                       const SizedBox(height: 38),
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: SizedBox(
-                          width: daysCount * 35.0,
-                          height: 200,
-                          child: BarChart(
-                            BarChartData(
-                              alignment: BarChartAlignment.spaceAround,
-                              maxY: maxExpense + (maxExpense * 0.25),
-                              barTouchData: BarTouchData(
-                                enabled: true,
-                                touchTooltipData: BarTouchTooltipData(
-                                  getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                                    return BarTooltipItem(
-                                      _formatCurrency(rod.toY),
-                                      const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 10),
-                                    );
-                                  },
-                                ),
-                              ),
-                              titlesData: FlTitlesData(
-                                show: true,
-                                topTitles: AxisTitles(
-                                  sideTitles: SideTitles(
-                                    showTitles: true,
-                                    reservedSize: 22,
-                                    getTitlesWidget: (value, meta) {
-                                      if (value.toInt() < 0 || value.toInt() >= daysCount) return const SizedBox.shrink();
-                                      final val = dailyExpenses[value.toInt()];
-                                      if (val <= 0) return const SizedBox.shrink();
-                                      
-                                      String text = '';
-                                      if (val >= 1000000) {
-                                        text = '${(val / 1000000).toStringAsFixed(1)}M';
-                                      } else if (val >= 1000) {
-                                        text = '${(val / 1000).toStringAsFixed(0)}k';
-                                      } else {
-                                        text = val.toStringAsFixed(0);
-                                      }
-                                      return Padding(
-                                        padding: const EdgeInsets.only(bottom: 4.0),
-                                        child: Text(text, style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.deepPurple.shade700)),
-                                      );
-                                    },
+                      activeDailyExpenses.isEmpty 
+                        ? Container(
+                            height: 200,
+                            alignment: Alignment.center,
+                            child: const Text("Tidak ada pengeluaran di bulan ini.", style: TextStyle(color: Colors.grey)),
+                          )
+                        : SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: SizedBox(
+                              width: (activeDailyExpenses.length * 50.0).clamp(MediaQuery.of(context).size.width - 48, double.infinity),
+                              height: 200,
+                              child: BarChart(
+                                BarChartData(
+                                  alignment: BarChartAlignment.spaceAround,
+                                  maxY: maxExpense + (maxExpense * 0.25),
+                                  barTouchData: BarTouchData(
+                                    enabled: true,
+                                    touchTooltipData: BarTouchTooltipData(
+                                      getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                                        return BarTooltipItem(
+                                          _formatCurrency(rod.toY),
+                                          const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 10),
+                                        );
+                                      },
+                                    ),
                                   ),
-                                ),
-                                bottomTitles: AxisTitles(
-                                  sideTitles: SideTitles(
-                                    showTitles: true,
-                                    getTitlesWidget: (value, meta) {
-                                      return Padding(
-                                        padding: const EdgeInsets.only(top: 8.0),
-                                        child: Text('${value.toInt() + 1}', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
-                                      );
-                                    },
-                                  ),
-                                ),
-                                leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                                rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                              ),
-                              gridData: const FlGridData(show: false),
-                              borderData: FlBorderData(show: false),
-                              barGroups: List.generate(daysCount, (i) {
-                                return BarChartGroupData(
-                                  x: i,
-                                  barRods: [
-                                    BarChartRodData(
-                                      toY: dailyExpenses[i],
-                                      color: Colors.deepPurple.shade500,
-                                      width: 16,
-                                      borderRadius: BorderRadius.circular(4),
-                                      backDrawRodData: BackgroundBarChartRodData(
-                                        show: true,
-                                        toY: maxExpense + (maxExpense * 0.25),
-                                        color: Colors.deepPurple.shade50,
+                                  titlesData: FlTitlesData(
+                                    show: true,
+                                    topTitles: AxisTitles(
+                                      sideTitles: SideTitles(
+                                        showTitles: true,
+                                        reservedSize: 22,
+                                        getTitlesWidget: (value, meta) {
+                                          if (value.toInt() < 0 || value.toInt() >= activeDailyExpenses.length) return const SizedBox.shrink();
+                                          final val = activeDailyExpenses[value.toInt()]['amount'] as double;
+                                          if (val <= 0) return const SizedBox.shrink();
+                                          
+                                          String text = '';
+                                          if (val >= 1000000) {
+                                            text = '${(val / 1000000).toStringAsFixed(1)}M';
+                                          } else if (val >= 1000) {
+                                            text = '${(val / 1000).toStringAsFixed(0)}k';
+                                          } else {
+                                            text = val.toStringAsFixed(0);
+                                          }
+                                          return Padding(
+                                            padding: const EdgeInsets.only(bottom: 4.0),
+                                            child: Text(text, style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.deepPurple.shade700)),
+                                          );
+                                        },
                                       ),
                                     ),
-                                  ],
-                                );
-                              }),
+                                    bottomTitles: AxisTitles(
+                                      sideTitles: SideTitles(
+                                        showTitles: true,
+                                        getTitlesWidget: (value, meta) {
+                                          if (value.toInt() < 0 || value.toInt() >= activeDailyExpenses.length) return const SizedBox.shrink();
+                                          final day = activeDailyExpenses[value.toInt()]['day'];
+                                          return Padding(
+                                            padding: const EdgeInsets.only(top: 8.0),
+                                            child: Text('$day', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                    leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                  ),
+                                  gridData: const FlGridData(show: false),
+                                  borderData: FlBorderData(show: false),
+                                  barGroups: List.generate(activeDailyExpenses.length, (i) {
+                                    return BarChartGroupData(
+                                      x: i,
+                                      barRods: [
+                                        BarChartRodData(
+                                          toY: activeDailyExpenses[i]['amount'] as double,
+                                          color: Colors.deepPurple.shade500,
+                                          width: 16,
+                                          borderRadius: BorderRadius.circular(4),
+                                          backDrawRodData: BackgroundBarChartRodData(
+                                            show: true,
+                                            toY: maxExpense + (maxExpense * 0.25),
+                                            color: Colors.deepPurple.shade50,
+                                          ),
+                                        ),
+                                      ],
+                                    );
+                                  }),
+                                ),
+                              ),
                             ),
                           ),
-                        ),
-                      ),
                     ],
                   ),
                 ),

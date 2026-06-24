@@ -7,6 +7,7 @@ class TaskModel {
   final int progress;
   final String? assignedTo;
   final String? assignedToName; // Field baru untuk nama pegawai
+  final String? buktiHasilUrl;
 
   TaskModel({
     required this.id,
@@ -17,6 +18,7 @@ class TaskModel {
     required this.progress,
     this.assignedTo,
     this.assignedToName,
+    this.buktiHasilUrl,
   });
 
   factory TaskModel.fromJson(Map<String, dynamic> json) {
@@ -47,6 +49,7 @@ class TaskModel {
       // Handle assigned_to yang bisa null
       assignedTo: json['assigned_to']?.toString(),
       assignedToName: name, // Set nama (bisa null jika tidak di-join)
+      buktiHasilUrl: json['bukti_hasil_url'],
     );
   }
 }

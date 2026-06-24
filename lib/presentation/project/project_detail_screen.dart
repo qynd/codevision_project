@@ -59,7 +59,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
 
     try {
       var query = supabase.from('tasks').select();
-      
+
       // Handle project_id type (bisa int atau string di database)
       final projectIdInt = int.tryParse(widget.project.id);
       if (projectIdInt != null) {
@@ -195,13 +195,16 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                                     .select('id')
                                     .eq('assigned_to', selectedUserId!)
                                     .neq('status', 'Done');
-                                
-                                final activeTasks = activeTasksResponse as List<dynamic>;
+
+                                final activeTasks =
+                                    activeTasksResponse as List<dynamic>;
                                 if (activeTasks.length >= 5) {
                                   if (context.mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
-                                        content: Text("Pegawai ini sudah mencapai batas maksimal 5 tugas aktif."),
+                                        content: Text(
+                                          "Pegawai ini sudah mencapai batas maksimal 5 tugas aktif.",
+                                        ),
                                         backgroundColor: Colors.red,
                                       ),
                                     );
@@ -261,6 +264,9 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
   void _showUpdateTaskDialog(TaskModel task) {
     String selectedStatus = task.status;
     double sliderValue = task.progress.toDouble();
+    TextEditingController linkController = TextEditingController(
+      text: task.buktiHasilUrl ?? '',
+    );
     final userRole = _currentUser?.role.toLowerCase().trim();
     bool isManager = userRole == 'manager' || userRole == 'admin';
 
@@ -345,6 +351,15 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                       setDialogState(() => sliderValue = val);
                     },
                   ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: linkController,
+                    decoration: const InputDecoration(
+                      labelText: "Link Bukti Hasil",
+                      hintText: "Contoh: https://...",
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
                   // Note: Bisa ditambahkan validasi Employee tidak bisa geser 100% jika status bukan Done, tapi kita percayakan pada Status.
                 ],
               ),
@@ -415,6 +430,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                           .update({
                             'status': selectedStatus,
                             'progress_percent': sliderValue.toInt(),
+                            'bukti_hasil_url': linkController.text.trim(),
                           })
                           .eq('id', task.id);
 
@@ -539,7 +555,13 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                         return const Center(child: CircularProgressIndicator());
                       }
                       if (snapshot.hasError) {
-                        return Center(child: Text("Error: ${snapshot.error}", textAlign: TextAlign.center, style: const TextStyle(color: Colors.red)));
+                        return Center(
+                          child: Text(
+                            "Error: ${snapshot.error}",
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(color: Colors.red),
+                          ),
+                        );
                       }
                       if (!snapshot.hasData || snapshot.data!.isEmpty) {
                         return const Center(child: Text("Belum ada tugas."));
@@ -637,7 +659,9 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
               ],
             ),
       // FAB HANYA UNTUK MANAGER / ADMIN
-      floatingActionButton: (_currentUser?.role.toLowerCase().trim() == 'manager' || _currentUser?.role.toLowerCase().trim() == 'admin')
+      floatingActionButton:
+          (_currentUser?.role.toLowerCase().trim() == 'manager' ||
+              _currentUser?.role.toLowerCase().trim() == 'admin')
           ? FloatingActionButton.extended(
               onPressed: _showAddTaskSheet,
               label: const Text("Tugas Baru"),
