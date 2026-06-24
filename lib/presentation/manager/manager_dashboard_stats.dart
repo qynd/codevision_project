@@ -586,7 +586,7 @@ class _ManagerDashboardStatsState extends State<ManagerDashboardStats> {
                           if (value.toInt() >= 0 && value.toInt() < employeeWorkload.keys.length) {
                             String name = employeeWorkload.keys.elementAt(value.toInt());
                             // Shorten name if too long
-                            if (name.length > 8) name = name.substring(0, 8) + '..';
+                            if (name.length > 8) name = '${name.substring(0, 8)}..';
                             return Padding(
                               padding: const EdgeInsets.only(top: 8.0),
                               child: Text(name, style: const TextStyle(fontSize: 10)),

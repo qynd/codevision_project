@@ -39,7 +39,21 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
   int? startMonth = DateTime.now().month;
   int? endMonth = DateTime.now().month;
   int? selectedYear = DateTime.now().year;
-  final List<String> _monthNames = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+  final List<String> _monthNames = [
+    '',
+    'Januari',
+    'Februari',
+    'Maret',
+    'April',
+    'Mei',
+    'Juni',
+    'Juli',
+    'Agustus',
+    'September',
+    'Oktober',
+    'November',
+    'Desember',
+  ];
 
   // Data
   List<dynamic> _data = [];
@@ -83,10 +97,15 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
             .select('*, users:users!tasks_assigned_to_fkey(nama)');
         break;
       case ReportType.attendance:
-        query = supabase.from('attendances').select('*, users(nama, nip, jabatan)');
+        query = supabase
+            .from('attendances')
+            .select('*, users(nama, nip, jabatan)');
         break;
       case ReportType.leave:
-        query = supabase.from('letters').select('*, users!letters_user_id_fkey(nama, nip, jabatan)').inFilter('jenis_surat', ['Izin', 'Sakit', 'Cuti']);
+        query = supabase
+            .from('letters')
+            .select('*, users!letters_user_id_fkey(nama, nip, jabatan)')
+            .inFilter('jenis_surat', ['Izin', 'Sakit', 'Cuti']);
         break;
       case ReportType.incomingLetter:
         query = supabase.from('incoming_letters').select();
@@ -95,10 +114,16 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
         query = supabase.from('outgoing_letters').select();
         break;
       case ReportType.operationalExpense:
-        query = supabase.from('operational_expenses').select('*, users!fk_expense_user(nama), projects(nama_proyek), approver:approver_id(nama)');
+        query = supabase
+            .from('operational_expenses')
+            .select(
+              '*, users!fk_expense_user(nama), projects(nama_proyek), approver:approver_id(nama)',
+            );
         break;
       case ReportType.performance:
-        query = supabase.from('employee_performances').select('*, users!fk_performance_user(nama)');
+        query = supabase
+            .from('employee_performances')
+            .select('*, users!fk_performance_user(nama)');
         break;
     }
 
@@ -150,14 +175,22 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
         if (!aggregatedMap.containsKey(userId)) {
           aggregatedMap[userId] = Map<String, dynamic>.from(row);
         } else {
-          aggregatedMap[userId]!['poin_absen'] = (aggregatedMap[userId]!['poin_absen'] ?? 0) + (row['poin_absen'] ?? 0);
-          aggregatedMap[userId]!['poin_tugas'] = (aggregatedMap[userId]!['poin_tugas'] ?? 0) + (row['poin_tugas'] ?? 0);
-          aggregatedMap[userId]!['total_poin'] = (aggregatedMap[userId]!['total_poin'] ?? 0) + (row['total_poin'] ?? 0);
+          aggregatedMap[userId]!['poin_absen'] =
+              (aggregatedMap[userId]!['poin_absen'] ?? 0) +
+              (row['poin_absen'] ?? 0);
+          aggregatedMap[userId]!['poin_tugas'] =
+              (aggregatedMap[userId]!['poin_tugas'] ?? 0) +
+              (row['poin_tugas'] ?? 0);
+          aggregatedMap[userId]!['total_poin'] =
+              (aggregatedMap[userId]!['total_poin'] ?? 0) +
+              (row['total_poin'] ?? 0);
         }
       }
 
       final aggregatedList = aggregatedMap.values.toList();
-      aggregatedList.sort((a, b) => (b['total_poin'] as int).compareTo(a['total_poin'] as int));
+      aggregatedList.sort(
+        (a, b) => (b['total_poin'] as int).compareTo(a['total_poin'] as int),
+      );
 
       setState(() {
         _data = aggregatedList;
@@ -220,8 +253,8 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
           break;
         case ReportType.performance:
           final list = _data.map((e) => PerformanceModel.fromJson(e)).toList();
-          String periodeTitle = startMonth == endMonth 
-              ? "${_monthNames[startMonth!]} $selectedYear" 
+          String periodeTitle = startMonth == endMonth
+              ? "${_monthNames[startMonth!]} $selectedYear"
               : "${_monthNames[startMonth!]} - ${_monthNames[endMonth!]} $selectedYear";
           url = await _pdfService.generatePerformanceReport(list, periodeTitle);
           break;
@@ -325,9 +358,26 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
                     if (widget.reportType == ReportType.performance) ...[
                       Expanded(
                         child: DropdownButtonFormField<int>(
-                          decoration: const InputDecoration(contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 0), border: OutlineInputBorder(), labelText: "Mulai"),
+                          decoration: const InputDecoration(
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 0,
+                            ),
+                            border: OutlineInputBorder(),
+                            labelText: "Mulai",
+                          ),
                           initialValue: startMonth,
-                          items: List.generate(12, (index) => DropdownMenuItem(value: index + 1, child: Text(_monthNames[index + 1], style: const TextStyle(fontSize: 12), overflow: TextOverflow.ellipsis))),
+                          items: List.generate(
+                            12,
+                            (index) => DropdownMenuItem(
+                              value: index + 1,
+                              child: Text(
+                                _monthNames[index + 1],
+                                style: const TextStyle(fontSize: 12),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ),
                           onChanged: (val) {
                             setState(() => startMonth = val);
                             _fetchData();
@@ -337,9 +387,26 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: DropdownButtonFormField<int>(
-                          decoration: const InputDecoration(contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 0), border: OutlineInputBorder(), labelText: "Sampai"),
+                          decoration: const InputDecoration(
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 0,
+                            ),
+                            border: OutlineInputBorder(),
+                            labelText: "Sampai",
+                          ),
                           initialValue: endMonth,
-                          items: List.generate(12, (index) => DropdownMenuItem(value: index + 1, child: Text(_monthNames[index + 1], style: const TextStyle(fontSize: 12), overflow: TextOverflow.ellipsis))),
+                          items: List.generate(
+                            12,
+                            (index) => DropdownMenuItem(
+                              value: index + 1,
+                              child: Text(
+                                _monthNames[index + 1],
+                                style: const TextStyle(fontSize: 12),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ),
                           onChanged: (val) {
                             setState(() => endMonth = val);
                             _fetchData();
@@ -349,11 +416,31 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: DropdownButtonFormField<int>(
-                          decoration: const InputDecoration(contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 0), border: OutlineInputBorder(), labelText: "Tahun"),
+                          decoration: const InputDecoration(
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 0,
+                            ),
+                            border: OutlineInputBorder(),
+                            labelText: "Tahun",
+                          ),
                           initialValue: selectedYear,
-                          items: [DateTime.now().year - 1, DateTime.now().year, DateTime.now().year + 1]
-                              .map((year) => DropdownMenuItem(value: year, child: Text(year.toString(), style: const TextStyle(fontSize: 12))))
-                              .toList(),
+                          items:
+                              [
+                                    DateTime.now().year - 1,
+                                    DateTime.now().year,
+                                    DateTime.now().year + 1,
+                                  ]
+                                  .map(
+                                    (year) => DropdownMenuItem(
+                                      value: year,
+                                      child: Text(
+                                        year.toString(),
+                                        style: const TextStyle(fontSize: 12),
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
                           onChanged: (val) {
                             setState(() => selectedYear = val);
                             _fetchData();
@@ -392,8 +479,10 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
                             initialValue: selectedStatus,
                             items: _getStatusOptions()
                                 .map(
-                                  (e) =>
-                                      DropdownMenuItem(value: e, child: Text(e)),
+                                  (e) => DropdownMenuItem(
+                                    value: e,
+                                    child: Text(e),
+                                  ),
                                 )
                                 .toList(),
                             onChanged: (val) {
@@ -405,7 +494,8 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
                     ],
                   ],
                 ),
-                if (startDate != null || widget.reportType == ReportType.performance)
+                if (startDate != null ||
+                    widget.reportType == ReportType.performance)
                   Align(
                     alignment: Alignment.centerRight,
                     child: TextButton(
@@ -465,7 +555,7 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
     if (widget.reportType == ReportType.project) {
       return ['Semua', 'New', 'In Progress', 'Completed'];
     } else if (widget.reportType == ReportType.task) {
-      return ['Semua', 'To Do', 'In Progress', 'Waiting Approval', 'Completed'];
+      return ['Semua', 'To Do', 'Doing', 'Waiting Approval', 'Done'];
     } else if (widget.reportType == ReportType.attendance) {
       return ['Semua', 'Hadir', 'Telat'];
     } else if (widget.reportType == ReportType.leave) {
@@ -516,8 +606,14 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
       case ReportType.leave:
         final userLevel = item['users'] ?? {'nama': 'Unknown'};
         title = "${userLevel['nama']} (${item['jenis_surat']})";
-        final tglAwal = item['tanggal_mulai'] != null ? DateFormat('dd MMM').format(DateTime.parse(item['tanggal_mulai'])) : '-';
-        final tglAkhir = item['tanggal_selesai'] != null ? DateFormat('dd MMM yyyy').format(DateTime.parse(item['tanggal_selesai'])) : '-';
+        final tglAwal = item['tanggal_mulai'] != null
+            ? DateFormat('dd MMM').format(DateTime.parse(item['tanggal_mulai']))
+            : '-';
+        final tglAkhir = item['tanggal_selesai'] != null
+            ? DateFormat(
+                'dd MMM yyyy',
+              ).format(DateTime.parse(item['tanggal_selesai']))
+            : '-';
         subtitle = "Tgl: $tglAwal s/d $tglAkhir";
         status = item['status'] ?? 'Pending';
         break;
@@ -532,14 +628,21 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
         break;
       case ReportType.operationalExpense:
         title = item['keterangan'] ?? 'Tanpa Keterangan';
-        final nominal = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(item['jumlah_dana'] ?? 0);
+        final nominal = NumberFormat.currency(
+          locale: 'id_ID',
+          symbol: 'Rp ',
+          decimalDigits: 0,
+        ).format(item['jumlah_dana'] ?? 0);
         subtitle = "Nominal: $nominal | Tgl: ${item['tanggal_pengajuan']}";
         status = item['status'] ?? '-';
         break;
       case ReportType.performance:
         title = item['users'] != null ? item['users']['nama'] : 'Unknown';
-        String periodeStr = startMonth == endMonth ? _monthNames[startMonth!] : "${_monthNames[startMonth!]} - ${_monthNames[endMonth!]}";
-        subtitle = "Periode: $periodeStr ${item['tahun']} | Tugas: ${item['poin_tugas']} | Absen: ${item['poin_absen']}";
+        String periodeStr = startMonth == endMonth
+            ? _monthNames[startMonth!]
+            : "${_monthNames[startMonth!]} - ${_monthNames[endMonth!]}";
+        subtitle =
+            "Periode: $periodeStr ${item['tahun']} | Tugas: ${item['poin_tugas']} | Absen: ${item['poin_absen']}";
         status = "${item['total_poin']} Pkt";
         break;
     }
