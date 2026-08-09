@@ -88,7 +88,7 @@ class _PermissionScreenState extends State<PermissionScreen> {
     final picked = await showDatePicker(
       context: context,
       initialDate: _selectedDate,
-      firstDate: DateTime(2024),
+      firstDate: DateTime.now(),
       lastDate: DateTime(2030),
     );
     if (picked != null) {

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../../data/models/expense_model.dart';
-import 'package:flutter/foundation.dart'; // for kIsWeb
 
 class ExpenseDetailScreen extends StatelessWidget {
   final ExpenseModel expense;

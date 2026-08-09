@@ -627,7 +627,7 @@ class _ManagerDashboardStatsState extends State<ManagerDashboardStats> {
 
     pdf.addPage(
       pw.MultiPage(
-        pageFormat: PdfPageFormat.a4.landscape,
+        pageFormat: PdfPageFormat.a4,
         build: (pw.Context context) {
           return [
             pdfService.buildLetterhead(logoImage),
@@ -671,6 +671,15 @@ class _ManagerDashboardStatsState extends State<ManagerDashboardStats> {
                 4: pw.Alignment.center,
                 5: pw.Alignment.center,
                 6: pw.Alignment.center,
+              },
+              columnWidths: {
+                0: const pw.FlexColumnWidth(0.6), // No
+                1: const pw.FlexColumnWidth(2.5), // Nama Pegawai
+                2: const pw.FlexColumnWidth(2.0), // Posisi
+                3: const pw.FlexColumnWidth(1.2), // Proyek Aktif
+                4: const pw.FlexColumnWidth(1.2), // Tugas Selesai
+                5: const pw.FlexColumnWidth(1.2), // Total Tugas
+                6: const pw.FlexColumnWidth(1.5), // Status Beban
               },
             ),
             pdfService.buildSignature(),

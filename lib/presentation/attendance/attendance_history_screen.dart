@@ -142,12 +142,12 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
                 jamMasuk = log['check_in'] != null
                     ? DateFormat(
                         'HH:mm',
-                      ).format(DateTime.parse(log['check_in']).toLocal())
+                      ).format(DateTime.parse(log['check_in']))
                     : '-';
                 jamPulang = log['check_out'] != null
                     ? DateFormat(
                         'HH:mm',
-                      ).format(DateTime.parse(log['check_out']).toLocal())
+                      ).format(DateTime.parse(log['check_out']))
                     : '-';
               }
 

@@ -27,10 +27,10 @@ class AttendanceModel {
       jabatan: user['jabatan'] ?? '-',
       tanggal: json['tanggal'] ?? '',
       checkInTime: json['check_in_time'] != null 
-          ? DateTime.parse(json['check_in_time']).toLocal().toString().split(' ')[1].substring(0, 5) 
+          ? DateTime.parse(json['check_in_time']).toString().split(' ')[1].substring(0, 5) 
           : '--:--',
       checkOutTime: json['check_out_time'] != null 
-          ? DateTime.parse(json['check_out_time']).toLocal().toString().split(' ')[1].substring(0, 5) 
+          ? DateTime.parse(json['check_out_time']).toString().split(' ')[1].substring(0, 5) 
           : '--:--',
       status: json['status'] ?? '-',
       keterangan: json['keterangan'] ?? '-',

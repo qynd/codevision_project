@@ -593,7 +593,7 @@ class _ReportPreviewScreenState extends State<ReportPreviewScreen> {
             // Try parse if it's a full timestamp
             checkInDisplay = DateTime.parse(
               item['check_in_time'],
-            ).toLocal().toString().split(' ')[1].substring(0, 5);
+            ).toString().split(' ')[1].substring(0, 5);
           } catch (_) {
             checkInDisplay = item['check_in_time'].toString();
           }

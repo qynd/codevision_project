@@ -65,7 +65,6 @@ class _AdminPermissionApprovalViewState
     extends State<AdminPermissionApprovalView> {
   final supabase = Supabase.instance.client;
   String _filterStatus = 'All';
-  bool _isLoading = false;
 
   Future<List<Map<String, dynamic>>> _fetchLetters() async {
     var query = supabase
@@ -83,23 +82,26 @@ class _AdminPermissionApprovalViewState
   Future<void> _processApproval(
     Map<String, dynamic> letter,
     String newStatus,
+    int adjustedDays,
   ) async {
-    setState(() => _isLoading = true);
 
     try {
-      // 1. Update status surat jadi Approved/Rejected
+      final startDate = DateTime.parse(letter['tanggal_mulai']);
+      final endDate = startDate.add(Duration(days: adjustedDays - 1));
+      final newEndDateStr = DateFormat('yyyy-MM-dd').format(endDate);
+
+      // 1. Update status surat jadi Approved/Rejected (dan update tanggal_selesai jika diubah)
       await supabase
           .from('letters')
-          .update({'status': newStatus})
+          .update({
+            'status': newStatus,
+            if (newStatus == 'Approved') 'tanggal_selesai': newEndDateStr,
+          })
           .eq('id', letter['id']);
 
       // 2. JIKA DISETUJUI, BUATKAN DATA ABSENSI OTOMATIS
       if (newStatus == 'Approved') {
-        final startDate = DateTime.parse(letter['tanggal_mulai']);
-        final endDate = DateTime.parse(letter['tanggal_selesai']);
-        final int days = endDate.difference(startDate).inDays + 1;
-
-        for (int i = 0; i < days; i++) {
+        for (int i = 0; i < adjustedDays; i++) {
           final currentDate = startDate.add(Duration(days: i));
           final dateString = DateFormat('yyyy-MM-dd').format(currentDate);
 
@@ -118,7 +120,7 @@ class _AdminPermissionApprovalViewState
               'check_in_time': DateTime.now().toIso8601String(),
               'check_out_time': DateTime.now().toIso8601String(),
               'keterangan': "Pengajuan Surat Disetujui Admin",
-              'durasi': 1,
+              'durasi': adjustedDays,
             });
           } else {
             await supabase
@@ -126,6 +128,7 @@ class _AdminPermissionApprovalViewState
                 .update({
                   'status': letter['jenis_surat'],
                   'keterangan': "Diubah oleh Admin (Surat Disetujui)",
+                  'durasi': adjustedDays,
                 })
                 .eq('id', existing['id']);
           }
@@ -141,81 +144,113 @@ class _AdminPermissionApprovalViewState
         ).showSnackBar(SnackBar(content: Text("Gagal: $e")));
       }
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) setState(() {});
     }
   }
 
   void _showDetailDialog(Map<String, dynamic> letter) {
     final user = letter['users'] ?? {};
     final String status = letter['status'] ?? 'Pending';
+    final TextEditingController durationController = TextEditingController();
+    bool isDialogLoading = false;
 
     String tanggal = '-';
+    int originalDays = 1;
+    DateTime startDate = DateTime.now();
     try {
-      final start = DateTime.parse(letter['tanggal_mulai']);
+      startDate = DateTime.parse(letter['tanggal_mulai']);
       final end = DateTime.parse(letter['tanggal_selesai']);
+      originalDays = end.difference(startDate).inDays + 1;
       tanggal =
-          "${DateFormat('dd MMM').format(start)} - ${DateFormat('dd MMM yyyy').format(end)}";
+          "${DateFormat('dd MMM').format(startDate)} - ${DateFormat('dd MMM yyyy').format(end)}";
     } catch (e) {
       tanggal = letter['tanggal_mulai'] ?? '-';
     }
 
+    durationController.text = originalDays.toString();
+
     showDialog(
       context: context,
-      barrierDismissible: !_isLoading,
-      builder: (context) => AlertDialog(
-        title: Text("Detail ${letter['jenis_surat']}"),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _rowDetail("Nama", user['nama'] ?? '-'),
-              _rowDetail("Jabatan", user['jabatan'] ?? '-'),
-              _rowDetail("Tanggal", tanggal),
-              _rowDetail("Keterangan", letter['keterangan'] ?? '-'),
-              const SizedBox(height: 10),
-              const Text(
-                "Status Saat Ini:",
-                style: TextStyle(fontSize: 12, color: Colors.grey),
-              ),
-              Text(
-                status,
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: _getStatusColor(status),
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setStateDialog) => AlertDialog(
+          title: Text("Detail ${letter['jenis_surat']}"),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _rowDetail("Nama", user['nama'] ?? '-'),
+                _rowDetail("Jabatan", user['jabatan'] ?? '-'),
+                _rowDetail("Tanggal", tanggal),
+                _rowDetail("Keterangan", letter['keterangan'] ?? '-'),
+                const SizedBox(height: 10),
+                if (status == 'Pending') ...[
+                  const Text("Sesuaikan Durasi (Hari):", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  const SizedBox(height: 5),
+                  TextField(
+                    controller: durationController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                ],
+                const Text(
+                  "Status Saat Ini:",
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
                 ),
-              ),
+                Text(
+                  status,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: _getStatusColor(status),
+                  ),
+                ),
 
-              if (_isLoading) const Center(child: CircularProgressIndicator()),
-            ],
-          ),
-        ),
-        actions: [
-          if (!_isLoading) ...[
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Tutup"),
+                if (isDialogLoading) const Padding(
+                  padding: EdgeInsets.only(top: 10.0),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+              ],
             ),
-            if (status == 'Pending') ...[
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  foregroundColor: Colors.white,
-                ),
-                onPressed: () => _processApproval(letter, 'Rejected'),
-                child: const Text("Tolak"),
+          ),
+          actions: [
+            if (!isDialogLoading) ...[
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Tutup"),
               ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
+              if (status == 'Pending') ...[
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: () async {
+                    setStateDialog(() => isDialogLoading = true);
+                    await _processApproval(letter, 'Rejected', originalDays);
+                  },
+                  child: const Text("Tolak"),
                 ),
-                onPressed: () => _processApproval(letter, 'Approved'),
-                child: const Text("Setujui"),
-              ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: () async {
+                    final int adjustedDays = int.tryParse(durationController.text) ?? originalDays;
+                    setStateDialog(() => isDialogLoading = true);
+                    await _processApproval(letter, 'Approved', adjustedDays);
+                  },
+                  child: const Text("Setujui"),
+                ),
+              ],
             ],
           ],
-        ],
+        ),
       ),
     );
   }

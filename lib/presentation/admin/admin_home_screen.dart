@@ -5,6 +5,7 @@ import '../auth/login_screen.dart'; // Import Login
 import 'employee/employee_list_screen.dart';
 import 'admin_dashboard_stats.dart'; 
 import 'performance/admin_performance_screen.dart';
+import 'attendance_settings_screen.dart';
 
 class AdminHomeScreen extends StatefulWidget {
   const AdminHomeScreen({super.key});
@@ -23,6 +24,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     const EmployeeListScreen(), // Halaman Pegawai
     const AdminLetterListScreen(), // (Opsional) Surat
     const AdminPerformanceScreen(), // Halaman Kinerja
+    const AttendanceSettingsScreen(), // Pengaturan Absensi
   ];
 
   // Judul tiap halaman
@@ -31,6 +33,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     "Kelola Pegawai",
     "Validasi Surat",
     "Penilaian Kinerja",
+    "Pengaturan Absensi",
   ];
 
   // Fungsi Logout Admin
@@ -71,6 +74,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
           BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Pegawai'),
           BottomNavigationBarItem(icon: Icon(Icons.email), label: 'Surat'),
           BottomNavigationBarItem(icon: Icon(Icons.star_rate_rounded), label: 'Kinerja'),
+          BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Pengaturan'),
         ],
         currentIndex: _selectedIndex,
         selectedItemColor: Colors.indigo,

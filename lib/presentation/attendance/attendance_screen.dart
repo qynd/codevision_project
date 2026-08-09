@@ -22,13 +22,106 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   DateTime? _checkOutTime;
   String _currentStatus = '';
   int _durasiCuti = 0;
+  int _hariKe = 1;
+
+  // --- STATE BARU: Konfigurasi Absensi ---
+  Map<String, dynamic>? _todaySchedule;
+  List<Map<String, dynamic>> _officeLocations = [];
+  bool _checkoutRequireGps = false;
+  bool _isOffDay = false;
 
   @override
   void initState() {
     super.initState();
     initializeDateFormatting('id_ID', null).then((_) {
-      _getTodayAttendance();
+      _loadAttendanceConfig().then((_) {
+        _getTodayAttendance();
+      });
     });
+  }
+
+  // --- BARU: Muat konfigurasi absensi dari database ---
+  Future<void> _loadAttendanceConfig() async {
+    try {
+      final dayOfWeek = DateTime.now().weekday; // 1=Senin...7=Minggu
+
+      // Ambil jadwal hari ini
+      final scheduleData = await supabase
+          .from('work_schedules')
+          .select()
+          .eq('day_of_week', dayOfWeek)
+          .limit(1)
+          .maybeSingle();
+
+      // Ambil lokasi kantor aktif
+      final locationsData = await supabase
+          .from('office_locations')
+          .select()
+          .eq('is_active', true);
+
+      // Ambil pengaturan umum
+      final settingsData = await supabase
+          .from('attendance_settings')
+          .select()
+          .limit(1)
+          .maybeSingle();
+
+      if (mounted) {
+        setState(() {
+          _todaySchedule = scheduleData;
+          _officeLocations = List<Map<String, dynamic>>.from(locationsData);
+          _checkoutRequireGps = settingsData?['checkout_require_gps'] ?? false;
+          _isOffDay = !(scheduleData?['is_active'] ?? true);
+        });
+      }
+    } catch (e) {
+      debugPrint("Error loading attendance config: $e");
+    }
+  }
+
+  // --- Helper: Parse waktu dari string "HH:mm" ---
+  DateTime _parseTimeToday(String timeStr) {
+    final now = DateTime.now();
+    final parts = timeStr.split(':');
+    return DateTime(now.year, now.month, now.day, 
+        int.parse(parts[0]), int.parse(parts[1]));
+  }
+
+  // --- Helper: Cek apakah dalam jam kerja ---
+  bool _isWithinWorkHours() {
+    if (_todaySchedule == null) return true;
+    final now = DateTime.now();
+    final jamBuka = _parseTimeToday(_todaySchedule!['jam_buka_absen'] ?? '07:00');
+    final jamPulang = _parseTimeToday(_todaySchedule!['jam_pulang'] ?? '16:00');
+    return !now.isBefore(jamBuka) && now.isBefore(jamPulang);
+  }
+
+  // --- Helper: Validasi GPS terhadap lokasi kantor ---
+  /// Returns null jika valid, atau pesan error jika di luar radius
+  String? _validateGpsAgainstOffices(Position pos) {
+    if (_officeLocations.isEmpty) return null; // Tidak ada lokasi = tidak perlu validasi
+
+    double nearestDistance = double.infinity;
+    String nearestName = '';
+
+    for (final loc in _officeLocations) {
+      final distance = Geolocator.distanceBetween(
+        pos.latitude, pos.longitude,
+        (loc['latitude'] as num).toDouble(),
+        (loc['longitude'] as num).toDouble(),
+      );
+      final radius = (loc['radius_meter'] as num?)?.toDouble() ?? 100.0;
+
+      if (distance <= radius) {
+        return null; // Dalam radius, valid
+      }
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestName = loc['nama'] ?? 'Unknown';
+      }
+    }
+
+    return "Anda di luar area kantor. Lokasi terdekat: $nearestName (${nearestDistance.toStringAsFixed(0)}m)";
   }
 
   Future<void> _getTodayAttendance() async {
@@ -64,6 +157,22 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             _checkInTime = DateTime.parse(attendanceData['check_in_time']);
             _currentStatus = attendanceData['status'] ?? 'Hadir';
             _durasiCuti = attendanceData['durasi'] ?? 1;
+
+            if (_currentStatus == 'Cuti' && letterData != null) {
+              try {
+                final start = DateTime.parse(letterData['tanggal_mulai']);
+                final end = DateTime.parse(letterData['tanggal_selesai']);
+                final todayDate = DateTime.parse(today);
+                
+                final int calculatedTotal = end.difference(start).inDays + 1;
+                _durasiCuti = calculatedTotal > 0 ? calculatedTotal : 1;
+                
+                _hariKe = (todayDate.difference(start).inDays + 1).clamp(1, _durasiCuti);
+              } catch (e) {
+                debugPrint("Error parsing leave dates: $e");
+              }
+            }
+
             if (attendanceData['check_out_time'] != null) {
               _checkOutTime = DateTime.parse(attendanceData['check_out_time']);
             }
@@ -122,6 +231,57 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   Future<void> _handleCheckIn() async {
     setState(() => _isLoading = true);
+
+    // --- VALIDASI HARI LIBUR ---
+    if (_isOffDay) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Hari ini libur, absensi tidak dibuka."),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
+    // --- VALIDASI WAKTU ---
+    if (_todaySchedule != null) {
+      final now = DateTime.now();
+      final jamBukaStr = _todaySchedule!['jam_buka_absen'] as String? ?? '07:00';
+      final jamPulangStr = _todaySchedule!['jam_pulang'] as String? ?? '16:00';
+      final jamBuka = _parseTimeToday(jamBukaStr);
+      final jamPulang = _parseTimeToday(jamPulangStr);
+
+      if (now.isBefore(jamBuka)) {
+        setState(() => _isLoading = false);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Absensi belum dibuka. Silakan coba setelah jam $jamBukaStr."),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        return;
+      }
+
+      if (!now.isBefore(jamPulang)) {
+        setState(() => _isLoading = false);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Waktu absensi sudah ditutup (setelah jam $jamPulangStr)."),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+    }
+
+    // --- AMBIL LOKASI GPS ---
     final pos = await _getCurrentLocation();
 
     if (pos == null) {
@@ -130,6 +290,22 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text("Gagal mengambil lokasi. Pastikan GPS aktif."),
+          ),
+        );
+      }
+      return;
+    }
+
+    // --- VALIDASI GPS GEOFENCING ---
+    final gpsError = _validateGpsAgainstOffices(pos);
+    if (gpsError != null) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(gpsError),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
           ),
         );
       }
@@ -191,6 +367,22 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       }
       // --------------------
 
+      // --- TENTUKAN STATUS: HADIR atau TELAT ---
+      String checkInStatus = 'Hadir';
+      if (_todaySchedule != null) {
+        final jamMasukStr = _todaySchedule!['jam_masuk'] as String? ?? '08:00';
+        final toleransi = (_todaySchedule!['toleransi_menit'] as num?)?.toInt() ?? 15;
+        final masukParts = jamMasukStr.split(':');
+        final batasTelat = DateTime(
+          now.year, now.month, now.day,
+          int.parse(masukParts[0]),
+          int.parse(masukParts[1]) + toleransi,
+        );
+        if (now.isAfter(batasTelat)) {
+          checkInStatus = 'Telat';
+        }
+      }
+
       final response = await supabase
           .from('attendances')
           .insert({
@@ -199,7 +391,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             'check_in_time': now.toIso8601String(),
             'check_in_lat': pos.latitude,
             'check_in_long': pos.longitude,
-            'status': 'Hadir',
+            'status': checkInStatus,
             'durasi': 1,
           })
           .select()
@@ -209,11 +401,16 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         setState(() {
           _attendanceId = response['id'];
           _checkInTime = now;
-          _currentStatus = 'Hadir';
+          _currentStatus = checkInStatus;
         });
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text("Berhasil Check-in!")));
+        ).showSnackBar(SnackBar(
+          content: Text(checkInStatus == 'Telat' 
+            ? "Check-in berhasil, tapi Anda TERLAMBAT!" 
+            : "Berhasil Check-in!"),
+          backgroundColor: checkInStatus == 'Telat' ? Colors.orange : null,
+        ));
       }
     } catch (e) {
       if (e.toString().contains('duplicate key') ||
@@ -276,6 +473,39 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       }
       // ----------------------------------
 
+      // --- VALIDASI GPS CHECK-OUT (jika diaktifkan admin) ---
+      if (_checkoutRequireGps) {
+        final pos = await _getCurrentLocation();
+        if (pos == null) {
+          setState(() => _isLoading = false);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Gagal mengambil lokasi. Pastikan GPS aktif."),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          return;
+        }
+
+        final gpsError = _validateGpsAgainstOffices(pos);
+        if (gpsError != null) {
+          setState(() => _isLoading = false);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text("Check-out harus di area kantor. ${gpsError.replaceFirst('Anda di luar area kantor. ', '')}"),
+                backgroundColor: Colors.red,
+                duration: const Duration(seconds: 4),
+              ),
+            );
+          }
+          return;
+        }
+      }
+      // -------------------------------------------------------
+
       final now = DateTime.now();
       await supabase
           .from('attendances')
@@ -291,7 +521,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         ).showSnackBar(const SnackBar(content: Text("Berhasil Check-out!")));
       }
     } catch (e) {
-      // Handle error
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error check-out: $e")),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -357,16 +591,46 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   Widget build(BuildContext context) {
     final timeFormat = DateFormat('HH:mm', 'id_ID');
 
+    // --- HEADLINE TEXT LOGIC (UPDATED) ---
     String headlineText = "Silakan Check-in";
-    if (_checkInTime != null) {
-      if (_currentStatus == 'Hadir') {
-        headlineText = _checkOutTime != null
-            ? "Selesai Bekerja"
-            : "Sedang Bekerja";
+    Color headlineColor = Colors.indigo;
+
+    if (_isOffDay && _checkInTime == null && _currentStatus == '') {
+      headlineText = "Hari Ini Libur 🏖️";
+      headlineColor = Colors.blue;
+    } else if (_checkInTime != null) {
+      if (_currentStatus == 'Hadir' || _currentStatus == 'Telat') {
+        if (_checkOutTime != null) {
+          headlineText = "Selesai Bekerja";
+          headlineColor = Colors.green;
+        } else {
+          headlineText = _currentStatus == 'Telat' ? "Sedang Bekerja (Telat)" : "Sedang Bekerja";
+          headlineColor = _currentStatus == 'Telat' ? Colors.orange : Colors.indigo;
+        }
       } else if (_currentStatus == 'Cuti') {
-        headlineText = "Cuti ($_durasiCuti Hari)";
+        if (_durasiCuti > 1) {
+          headlineText = "Cuti (Hari ke-$_hariKe dari $_durasiCuti Hari)";
+        } else {
+          headlineText = "Cuti (1 Hari)";
+        }
+        headlineColor = Colors.orange;
       } else {
         headlineText = "Sedang $_currentStatus";
+        headlineColor = Colors.orange;
+      }
+    } else if (_todaySchedule != null && _currentStatus == '') {
+      final now = DateTime.now();
+      final jamBukaStr = _todaySchedule!['jam_buka_absen'] as String? ?? '07:00';
+      final jamPulangStr = _todaySchedule!['jam_pulang'] as String? ?? '16:00';
+      final jamBuka = _parseTimeToday(jamBukaStr);
+      final jamPulang = _parseTimeToday(jamPulangStr);
+
+      if (now.isBefore(jamBuka)) {
+        headlineText = "Absensi Dibuka Jam $jamBukaStr";
+        headlineColor = Colors.grey;
+      } else if (!now.isBefore(jamPulang)) {
+        headlineText = "Waktu Absensi Sudah Lewat";
+        headlineColor = Colors.red;
       }
     }
 
@@ -406,10 +670,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
-                      color: _currentStatus == 'Hadir'
-                          ? Colors.indigo
-                          : Colors.orange,
+                      color: headlineColor,
                     ),
+                    textAlign: TextAlign.center,
                   ),
                   Text(
                     DateFormat(
@@ -418,9 +681,51 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                     ).format(DateTime.now()),
                     style: const TextStyle(color: Colors.grey),
                   ),
+
+                  // --- BARU: Info Jam Kerja ---
+                  if (_todaySchedule != null && !_isOffDay)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.schedule, size: 14, color: Colors.grey),
+                          const SizedBox(width: 4),
+                          Text(
+                            "Jam Kerja: ${_todaySchedule!['jam_buka_absen'] ?? '07:00'} - ${_todaySchedule!['jam_pulang'] ?? '16:00'}",
+                            style: const TextStyle(color: Colors.grey, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+
                   const SizedBox(height: 40),
 
-                  if ((_currentStatus == 'Hadir' || _currentStatus == '') ||
+                  // --- BARU: Info Hari Libur ---
+                  if (_isOffDay && _currentStatus == '' && _checkInTime == null)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      margin: const EdgeInsets.symmetric(vertical: 20),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.blue.shade200),
+                      ),
+                      child: const Column(
+                        children: [
+                          Icon(Icons.beach_access, color: Colors.blue, size: 50),
+                          SizedBox(height: 10),
+                          Text(
+                            "Hari ini adalah hari libur.\nAbsensi tidak dibuka.",
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 16, color: Colors.blue),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                  if ((_currentStatus == 'Hadir' || _currentStatus == 'Telat' || _currentStatus == '') ||
                       (_checkInTime == null && _currentStatus == ''))
                     Row(
                       children: [
@@ -444,7 +749,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                       ],
                     ),
 
-                  if (_currentStatus != 'Hadir' && _checkInTime != null)
+                  if (_currentStatus != 'Hadir' && _currentStatus != 'Telat' && _checkInTime != null)
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(20),
@@ -463,7 +768,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                           ),
                           const SizedBox(height: 10),
                           Text(
-                            "Anda telah mengajukan $_currentStatus${_currentStatus == 'Cuti' ? " selama $_durasiCuti hari." : "."}",
+                            "Anda telah mengajukan $_currentStatus${_currentStatus == 'Cuti' ? (_durasiCuti > 1 ? " (Hari ke-$_hariKe dari $_durasiCuti Hari)." : " selama 1 hari.") : "."}",
                             textAlign: TextAlign.center,
                             style: const TextStyle(fontSize: 16),
                           ),
@@ -473,7 +778,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
                   const SizedBox(height: 50),
 
-                  if (_checkInTime == null && _currentStatus == '') ...[
+                  // --- UPDATED: Tombol Check-in hanya tampil jika dalam jam kerja & bukan hari libur ---
+                  if (_checkInTime == null && _currentStatus == '' && !_isOffDay && _isWithinWorkHours()) ...[
                     SizedBox(
                       width: double.infinity,
                       height: 50,
@@ -492,7 +798,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                       onPressed: _goToPermissionScreen,
                       child: const Text("Tidak bisa hadir? Ajukan Cuti/Izin"),
                     ),
-                  ] else if (_currentStatus == 'Hadir' &&
+                  ] else if ((_currentStatus == 'Hadir' || _currentStatus == 'Telat') &&
                       _checkOutTime == null) ...[
                     SizedBox(
                       width: double.infinity,
